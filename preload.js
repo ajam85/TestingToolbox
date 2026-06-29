@@ -1,5 +1,5 @@
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  spustOCR: () => ipcRenderer.invoke('spust-ocr')
-})
+  copyText: (text) => ipcRenderer.invoke('clipboard-write', text)
+});

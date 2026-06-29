@@ -1,5 +1,10 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, clipboard } = require('electron');
 const path = require('path');
+
+ipcMain.handle('clipboard-write', (event, text) => {
+  clipboard.writeText(text);
+  return true;
+});
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -12,8 +17,14 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      geolocation: false
     }
+  });
+
+  win.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'notifications') callback(true);
+    else callback(false);
   });
 
   win.loadFile(path.join(__dirname, 'src', 'index.html'));
