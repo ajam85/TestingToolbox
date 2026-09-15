@@ -1,0 +1,30 @@
+{
+  "name": "testingtoolbox",
+  "version": "1.0.0",
+  "description": "TestingToolbox – nastroj pro manualni testovani software",
+  "main": "main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win portable",
+    "build:win:installer": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.testingtoolbox.app",
+    "productName": "TestingToolbox",
+    "copyright": "Copyright © 2025",
+    "directories": { "output": "dist", "buildResources": "assets" },
+    "files": ["main.js", "preload.js", "src/**/*", "assets/**/*"],
+    "win": {
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false,
+      "target": [{ "target": "portable", "arch": ["x64"] }]
+    },
+    "portable": { "artifactName": "TestingToolbox-Portable-${version}.exe" }
+  }
+}
