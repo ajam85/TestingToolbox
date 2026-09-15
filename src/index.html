@@ -602,18 +602,60 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 
 <!-- ══ TESTOVACÍ DATA ══ -->
 <div class="tab-content" id="tab-td">
-  <div class="section-toolbar">
-    <button class="section-btn" onclick="exportSection('td')" title="Export"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-1.5"/><path d="M2 13h10"/><path d="m5 10-3 3 3 3"/></svg> Export</button>
-    <button class="section-btn" onclick="importSection('td')" title="Import"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></svg> Import</button>
-    <input type="file" id="import-file-td" accept=".json" style="display:none" onchange="handleImport(event,'td')">
+  <!-- Přepínač Obecné / Osoba / Firma -->
+  <div class="nt-mode-bar">
+    <div class="nt-mode-tab active" id="td-mode-obecne" onclick="switchTdMode('obecne')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 15 21.84"/><path d="M21 5V8"/><path d="M21 12L18 17H22L19 22"/><path d="M3 12A9 3 0 0 0 14.59 14.87"/></svg> Obecné</div>
+    <div class="nt-mode-tab" id="td-mode-osoba" onclick="switchTdMode('osoba')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20h4"/><path d="M12 16v6"/><path d="M17 2h4v4"/><path d="m21 2-5.46 5.46"/><circle cx="12" cy="11" r="5"/></svg> Osoba</div>
+    <div class="nt-mode-tab" id="td-mode-firma" onclick="switchTdMode('firma')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg> Firma</div>
   </div>
-  <div class="subtab-bar">
-    <button class="subtab-arrow" id="td-arr-l" onclick="scrollTabs('td',-1)">&#9664;</button>
-    <div class="subtab-scroll"><div class="sub-tabs" id="td-sub-tabs"></div></div>
-    <button class="subtab-arrow" id="td-arr-r" onclick="scrollTabs('td',1)">&#9654;</button>
-    <button class="add-subtab-btn" onclick="addSubTab('td')" title="Přidat skupinu">＋</button>
+
+  <!-- Obecné (původní volné skupiny) -->
+  <div class="nt-mode-section active" id="td-section-obecne">
+    <div class="section-toolbar">
+      <button class="section-btn" onclick="exportSection('td')" title="Export"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-1.5"/><path d="M2 13h10"/><path d="m5 10-3 3 3 3"/></svg> Export</button>
+      <button class="section-btn" onclick="importSection('td')" title="Import"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></svg> Import</button>
+      <input type="file" id="import-file-td" accept=".json" style="display:none" onchange="handleImport(event,'td')">
+    </div>
+    <div class="subtab-bar">
+      <button class="subtab-arrow" id="td-arr-l" onclick="scrollTabs('td',-1)">&#9664;</button>
+      <div class="subtab-scroll"><div class="sub-tabs" id="td-sub-tabs"></div></div>
+      <button class="subtab-arrow" id="td-arr-r" onclick="scrollTabs('td',1)">&#9654;</button>
+      <button class="add-subtab-btn" onclick="addSubTab('td')" title="Přidat skupinu">＋</button>
+    </div>
+    <div id="td-contents"></div>
   </div>
-  <div id="td-contents"></div>
+
+  <!-- Osoba (uložené osoby s pevnými poli) -->
+  <div class="nt-mode-section" id="td-section-osoba">
+    <div class="section-toolbar">
+      <button class="section-btn" onclick="exportSection('tdo')" title="Export"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-1.5"/><path d="M2 13h10"/><path d="m5 10-3 3 3 3"/></svg> Export</button>
+      <button class="section-btn" onclick="importSection('tdo')" title="Import"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></svg> Import</button>
+      <input type="file" id="import-file-tdo" accept=".json" style="display:none" onchange="handleImport(event,'tdo')">
+    </div>
+    <div class="subtab-bar">
+      <button class="subtab-arrow" id="tdo-arr-l" onclick="scrollTabs('tdo',-1)">&#9664;</button>
+      <div class="subtab-scroll"><div class="sub-tabs" id="tdo-sub-tabs"></div></div>
+      <button class="subtab-arrow" id="tdo-arr-r" onclick="scrollTabs('tdo',1)">&#9654;</button>
+      <button class="add-subtab-btn" onclick="addSubTab('tdo')" title="Přidat osobu">＋</button>
+    </div>
+    <div id="tdo-contents"></div>
+  </div>
+
+  <!-- Firma (uložené firmy s pevnými poli) -->
+  <div class="nt-mode-section" id="td-section-firma">
+    <div class="section-toolbar">
+      <button class="section-btn" onclick="exportSection('tdf')" title="Export"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-1.5"/><path d="M2 13h10"/><path d="m5 10-3 3 3 3"/></svg> Export</button>
+      <button class="section-btn" onclick="importSection('tdf')" title="Import"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></svg> Import</button>
+      <input type="file" id="import-file-tdf" accept=".json" style="display:none" onchange="handleImport(event,'tdf')">
+    </div>
+    <div class="subtab-bar">
+      <button class="subtab-arrow" id="tdf-arr-l" onclick="scrollTabs('tdf',-1)">&#9664;</button>
+      <div class="subtab-scroll"><div class="sub-tabs" id="tdf-sub-tabs"></div></div>
+      <button class="subtab-arrow" id="tdf-arr-r" onclick="scrollTabs('tdf',1)">&#9654;</button>
+      <button class="add-subtab-btn" onclick="addSubTab('tdf')" title="Přidat firmu">＋</button>
+    </div>
+    <div id="tdf-contents"></div>
+  </div>
 </div>
 
 <!-- ══ GENERÁTOR DAT ══ -->
@@ -1031,7 +1073,7 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
             <img src="../assets/icon.png" style="width:24px;height:24px;border-radius:5px;object-fit:cover">
             TestingToolbox
           </div>
-          <div class="settings-about-line" id="set-about-version">Verze: <strong>v1.1</strong></div>
+          <div class="settings-about-line" id="set-about-version">Verze: <strong>{{APP_VERSION}}</strong></div>
           <div class="settings-about-badge" id="set-about-credit">Vytvořeno s pomocí Claude (Anthropic)</div>
         </div>
       </div>
@@ -1039,30 +1081,7 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
       <!-- Historie změn -->
       <div class="settings-section">
         <div class="settings-section-title" id="set-changelog-label">Historie změn</div>
-        <div style="font-size:12px;color:var(--text3);line-height:1.8;max-height:220px;overflow-y:auto">
-          <div style="margin-bottom:10px">
-            <span style="font-weight:700;color:var(--text)">v1.1</span><br>
-            + Generátor Osoba — data z xlsx datasetu<br>
-            + Generátor souborů — generátor názvu<br>
-            + Boční panel Nastavení s historií změn<br>
-            + Export/Import pro záložku Seznam<br>
-            + Generátor souborů — výběr jazyka obsahu<br>
-            ✓ Oprava kopírování v Electron (IPC)<br>
-            ✓ Oprava zamčených záložek (readOnly)<br>
-            ✓ Generátor souborů &gt;1 MB bez zaseknutí
-          </div>
-          <div>
-            <span style="font-weight:700;color:var(--text)">v1.0</span><br>
-            + Porovnávač textů (diff slov/řádků)<br>
-            + Testovací data s checkboxy<br>
-            + Generátor dat (Osoba/Firma/Obecné/Hesla)<br>
-            + Generátor textu UTF-8 vícejazyčný<br>
-            + Časomíra — stopky + časovače s notifikací<br>
-            + Poznámky + Seznam se zámkem položek<br>
-            + Generátor souborů přesné velikosti<br>
-            + CZ/EN přepínač, světlé/tmavé téma
-          </div>
-        </div>
+        <div id="set-changelog-body" style="font-size:12px;color:var(--text3);line-height:1.8;max-height:220px;overflow-y:auto"></div>
       </div>
 
     </div>    </div>
@@ -1078,7 +1097,7 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
     <div class="info-section info-about" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;margin-bottom:1rem;">
       <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">TestingToolbox</div>
       <div style="font-size:12px;color:var(--text3);line-height:1.6">
-        Verze: <strong id="info-version">v1.0</strong><br>
+        Verze: <strong id="info-version"></strong><br>
         Vytvořeno s pomocí <strong>Claude</strong> (Anthropic) — AI asistent<br>
         <span style="color:var(--text4);font-size:11px">Testing Toolbox — nástroj pro manuální testování</span>
       </div>
@@ -1123,6 +1142,52 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 </div>
 
 <script>
+/* ══ VERZE APLIKACE ══
+   Při každé změně: 1) zvýšit APP_VERSION, 2) přidat záznam na začátek CHANGELOG,
+   3) pojmenovat výstupní soubor TestingToolbox_vX.html se stejným číslem. */
+const APP_VERSION = 'v20';
+const CHANGELOG = [
+  { v: 'v20', items: [
+    '+ Testovací data — nové podsekce Osoba a Firma s pevnými poli pro ukládání již vytvořených údajů',
+    '+ Podsekce Osoba: možnost uložit více osob (jméno, adresa, doklady, kontakty) a přepínat mezi nimi',
+    '+ Podsekce Firma: možnost uložit více firem (název, IČO, DIČ, sídlo, kontakty) a přepínat mezi nimi',
+    '+ Export/Import JSON i pro nové podsekce Osoba a Firma'
+  ]},
+  { v: 'v19', items: [
+    '+ Centralizovaný systém verzování (jedno místo pro verzi a historii změn)'
+  ]},
+  { v: 'v1.1', items: [
+    '+ Generátor Osoba — data z xlsx datasetu',
+    '+ Generátor souborů — generátor názvu',
+    '+ Boční panel Nastavení s historií změn',
+    '+ Export/Import pro záložku Seznam',
+    '+ Generátor souborů — výběr jazyka obsahu',
+    '✓ Oprava kopírování v Electron (IPC)',
+    '✓ Oprava zamčených záložek (readOnly)',
+    '✓ Generátor souborů >1 MB bez zaseknutí'
+  ]},
+  { v: 'v1.0', items: [
+    '+ Porovnávač textů (diff slov/řádků)',
+    '+ Testovací data s checkboxy',
+    '+ Generátor dat (Osoba/Firma/Obecné/Hesla)',
+    '+ Generátor textu UTF-8 vícejazyčný',
+    '+ Časomíra — stopky + časovače s notifikací',
+    '+ Poznámky + Seznam se zámkem položek',
+    '+ Generátor souborů přesné velikosti',
+    '+ CZ/EN přepínač, světlé/tmavé téma'
+  ]}
+];
+function renderChangelog() {
+  const wrap = document.getElementById('set-changelog-body');
+  if (!wrap) return;
+  wrap.innerHTML = CHANGELOG.map((entry, i) => `
+    <div style="margin-bottom:${i < CHANGELOG.length - 1 ? '10px' : '0'}">
+      <span style="font-weight:700;color:var(--text)">${entry.v}</span><br>
+      ${entry.items.join('<br>')}
+    </div>
+  `).join('');
+}
+
 /* ══ THEME ══ */
 let theme = localStorage.getItem('theme') || 'dark';
 function applyTheme(t) {
@@ -1561,7 +1626,7 @@ function markDirty() { setSaveDirty(true); }
 function saveData() {
   syncAllDOM();
   try {
-    localStorage.setItem('app_v1', JSON.stringify({td: DS.td, nt: DS.nt, sl: DS.sl}));
+    localStorage.setItem('app_v1', JSON.stringify({td: DS.td, tdo: DS.tdo, tdf: DS.tdf, nt: DS.nt, sl: DS.sl}));
     dirty = false; autoSaveTimer = null;
   } catch(e) { console.error('Auto-save failed:', e.message); }
 }
@@ -1569,7 +1634,7 @@ function saveData() {
 
 function exportSection(ns) {
   if (ns === 'sl') syncSlDOM(); else syncAllDOM();
-  const names = {td:'testovaci-data', nt:'poznamky', sl:'seznam'};
+  const names = {td:'testovaci-data', tdo:'testovaci-data-osoba', tdf:'testovaci-data-firma', nt:'poznamky', sl:'seznam'};
   const data = ns === 'sl' ? DS.sl.tabs : DS[ns].tabs;
   const blob = new Blob([JSON.stringify({version:3, section:ns, exported:new Date().toISOString(), tabs:data}, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1579,7 +1644,7 @@ function exportSection(ns) {
 function importSection(ns) { const el = document.getElementById('import-file-'+ns); el.value = ''; el.click(); }
 function handleImport(event, ns) {
   const file = event.target.files[0]; if (!file) return;
-  const labels = {td:'testovací data', nt:'poznámky', sl:'seznam'};
+  const labels = {td:'testovací data', tdo:'testovací data (Osoba)', tdf:'testovací data (Firma)', nt:'poznámky', sl:'seznam'};
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
@@ -1602,19 +1667,53 @@ function handleImport(event, ns) {
   reader.readAsText(file);
 }
 
+/* ══ TESTOVACÍ DATA — Osoba / Firma (pevná pole) ══ */
+const TD_OSOBA_FIELDS = ['Křestní jméno','Příjmení','Rodné příjmení','Datum narození','IČO (pro FOP)','Rodné číslo','Číslo OP','Číslo pasu','Ulice','Číslo popisné','Číslo orientační','Obec','PSČ','Telefon','E-mail'];
+const TD_FIRMA_FIELDS = ['Název','Právní forma','IČO','DIČ','Datová schránka','E-mail','Telefon','Ulice','Číslo popisné','Číslo orientační','Obec','PSČ'];
+let tdMode = 'obecne';
+function switchTdMode(mode) {
+  tdMode = mode;
+  ['obecne','osoba','firma'].forEach(m => {
+    document.getElementById('td-mode-'+m)?.classList.toggle('active', m === mode);
+    document.getElementById('td-section-'+m)?.classList.toggle('active', m === mode);
+  });
+  updateCtxButtons('td', ntMode);
+}
+
 /* ══ DATA STATE ══ */
 let DS = {
   td: {activeTab:0, scrollIdx:0, tabs:[{name:'Skupina 1', locked:false, rows:[{label:'',value:''}]}]},
+  tdo: {activeTab:0, scrollIdx:0, tabs:[{name:'Osoba 1', locked:false, rows: TD_OSOBA_FIELDS.map(f=>({label:f, value:''}))}]},
+  tdf: {activeTab:0, scrollIdx:0, tabs:[{name:'Firma 1', locked:false, rows: TD_FIRMA_FIELDS.map(f=>({label:f, value:''}))}]},
   nt: {activeTab:0, scrollIdx:0, tabs:[{name:'Poznámka 1', locked:false, text:''}]}
 };
 function loadStorage() {
-  try { const raw = localStorage.getItem('app_v1'); if (raw) { const p = JSON.parse(raw); if (p.td && p.td.tabs) DS.td = p.td; if (p.nt && p.nt.tabs) DS.nt = p.nt; if (p.sl && p.sl.tabs) DS.sl = p.sl; } setSaveDirty(false); } catch(e) {}
+  try {
+    const raw = localStorage.getItem('app_v1');
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p.td && p.td.tabs) DS.td = p.td;
+      if (p.tdo && p.tdo.tabs) DS.tdo = p.tdo;
+      if (p.tdf && p.tdf.tabs) DS.tdf = p.tdf;
+      if (p.nt && p.nt.tabs) DS.nt = p.nt;
+      if (p.sl && p.sl.tabs) DS.sl = p.sl;
+    }
+    setSaveDirty(false);
+  } catch(e) {}
 }
-function syncAllDOM() { syncTdDOM(); syncNtDOM(); }
+function syncAllDOM() { syncTdDOM(); syncFixedDOM('tdo'); syncFixedDOM('tdf'); syncNtDOM(); }
 function syncTdDOM() {
   DS.td.tabs.forEach((tab, ti) => {
     const ni = document.querySelector('#td-sub-tabs .tab-name-inp[data-ti="'+ti+'"]'); if (ni) tab.name = ni.value;
     tab.rows = []; document.querySelectorAll('#td-contents .data-rows[data-ti="'+ti+'"] .data-row').forEach(row => { tab.rows.push({label: row.querySelector('.row-label-inp').value, value: row.querySelector('.row-value-inp').value}); });
+  });
+}
+function syncFixedDOM(ns) {
+  if (!DS[ns]) return;
+  DS[ns].tabs.forEach((tab, ti) => {
+    const ni = document.querySelector('#'+ns+'-sub-tabs .tab-name-inp[data-ti="'+ti+'"]'); if (ni) tab.name = ni.value;
+    const rowEls = document.querySelectorAll('#'+ns+'-contents .data-rows[data-ti="'+ti+'"] .data-row');
+    tab.rows.forEach((row, ri) => { const el = rowEls[ri]; if (el) row.value = el.querySelector('.row-value-inp').value; });
   });
 }
 function syncNtDOM() {
@@ -1648,7 +1747,11 @@ function copyVal(btn, val) {
 }
 
 /* ══ RENDER ══ */
-function renderAll() { renderSubTabs('td'); renderSubTabs('nt'); renderTdContents(); renderNtContents(); updateArrows('td'); updateArrows('nt'); }
+function renderAll() {
+  renderSubTabs('td'); renderSubTabs('tdo'); renderSubTabs('tdf'); renderSubTabs('nt');
+  renderTdContents(); renderFixedContents('tdo'); renderFixedContents('tdf'); renderNtContents();
+  updateArrows('td'); updateArrows('tdo'); updateArrows('tdf'); updateArrows('nt');
+}
 function renderSubTabs(ns) {
   const wrap = document.getElementById(ns+'-sub-tabs'); wrap.innerHTML = '';
   DS[ns].tabs.forEach((tab, ti) => {
@@ -1727,6 +1830,40 @@ function renderTdContents() {
     });
     sec.appendChild(rw);
     if (!tab.locked) { const ab=document.createElement('button'); ab.className='add-row-btn'; ab.innerHTML='＋ Přidat řádek'; ab.onclick=()=>addRow(ti); sec.appendChild(ab); }
+    wrap.appendChild(sec);
+  });
+}
+function renderFixedContents(ns) {
+  const wrap = document.getElementById(ns+'-contents'); if (!wrap) return; wrap.innerHTML = '';
+  DS[ns].tabs.forEach((tab, ti) => {
+    const sec = document.createElement('div'); sec.style.display = ti === DS[ns].activeTab ? 'block' : 'none';
+    const actBar = document.createElement('div'); actBar.className = 'td-actions';
+    const rw = document.createElement('div'); rw.className = 'data-rows'; rw.setAttribute('data-ti', ti);
+    const selAllBtn = document.createElement('button'); selAllBtn.className = 'select-all-btn'; selAllBtn.textContent = 'Vybrat vše';
+    selAllBtn.onclick = () => { const boxes = rw.querySelectorAll('input[type=checkbox]'); const allChecked = Array.from(boxes).every(b=>b.checked); boxes.forEach(b=>{ b.checked=!allChecked; b.closest('.data-row').classList.toggle('checked',!allChecked); }); };
+    const cpSelBtn = document.createElement('button'); cpSelBtn.className = 'copy-selected-btn'; cpSelBtn.textContent = '⎘ Kopírovat označené';
+    cpSelBtn.onclick = () => {
+      const lines = []; rw.querySelectorAll('.data-row').forEach(row => { if (row.querySelector('input[type=checkbox]').checked) { const l=row.querySelector('.row-label-inp').value; const v=row.querySelector('.row-value-inp').value; lines.push((l?l+': ':'')+v); } });
+      if (!lines.length) { alert('Žádná položka není označena.'); return; }
+      const text = lines.join('\n');
+      const ok = () => { cpSelBtn.classList.add('copied'); cpSelBtn.textContent='✓ Zkopírováno'; setTimeout(()=>{ cpSelBtn.classList.remove('copied'); cpSelBtn.textContent='⎘ Kopírovat označené'; },1500); };
+      smartCopy(text, ok);
+    };
+    actBar.appendChild(selAllBtn); actBar.appendChild(cpSelBtn); sec.appendChild(actBar);
+    tab.rows.forEach((row, ri) => {
+      const rowEl=document.createElement('div'); rowEl.className='data-row';
+      const chkWrap=document.createElement('div'); chkWrap.className='row-check'; const chk=document.createElement('input'); chk.type='checkbox'; chk.onchange=()=>rowEl.classList.toggle('checked',chk.checked); chkWrap.appendChild(chk);
+      const fields=document.createElement('div'); fields.className='row-fields';
+      const lbl=document.createElement('input'); lbl.className='row-label-inp'; lbl.value=row.label; lbl.disabled=true; lbl.title='Název pole je pevně dané';
+      const val=document.createElement('input'); val.className='row-value-inp'; val.placeholder='Hodnota'; val.value=row.value; val.disabled=tab.locked; val.oninput=()=>{row.value=val.value;markDirty();};
+      const cpBtn=document.createElement('button'); cpBtn.className='copy-btn'; cpBtn.textContent='⧉'; cpBtn.onclick=()=>copyVal(cpBtn,val.value);
+      val.addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); cpBtn.click(); } });
+      fields.appendChild(lbl); fields.appendChild(val);
+      const acts=document.createElement('div'); acts.className='row-actions';
+      acts.appendChild(cpBtn);
+      rowEl.appendChild(chkWrap); rowEl.appendChild(fields); rowEl.appendChild(acts); rw.appendChild(rowEl);
+    });
+    sec.appendChild(rw);
     wrap.appendChild(sec);
   });
 }
@@ -2982,12 +3119,15 @@ function addSubTab(ns) {
     markDirty(); renderSubTabsSl(); renderSlContents(); updateArrowsSl();
     return;
   }
-  // Call original for td/nt
+  // Call original for td/tdo/tdf/nt
   syncAllDOM();
   const d = DS[ns];
-  d.tabs.push(ns === 'td'
-    ? {name:'Skupina '+(d.tabs.length+1), locked:false, rows:[{label:'',value:''}]}
-    : {name:'Poznámka '+(d.tabs.length+1), locked:false, entries:[{title:'',text:''}]});
+  let newTab;
+  if (ns === 'td') newTab = {name:'Skupina '+(d.tabs.length+1), locked:false, rows:[{label:'',value:''}]};
+  else if (ns === 'tdo') newTab = {name:'Osoba '+(d.tabs.length+1), locked:false, rows: TD_OSOBA_FIELDS.map(f=>({label:f, value:''}))};
+  else if (ns === 'tdf') newTab = {name:'Firma '+(d.tabs.length+1), locked:false, rows: TD_FIRMA_FIELDS.map(f=>({label:f, value:''}))};
+  else newTab = {name:'Poznámka '+(d.tabs.length+1), locked:false, entries:[{title:'',text:''}]};
+  d.tabs.push(newTab);
   d.activeTab = d.tabs.length-1; d.scrollIdx = d.activeTab;
   markDirty(); renderAll();
 }
@@ -3101,7 +3241,7 @@ function updateCtxButtons(mainTab, ntMode) {
   const wrap = document.getElementById('ctx-export-wrap');
   if (!wrap) return;
   let ns = null;
-  if (mainTab === 'td') ns = 'td';
+  if (mainTab === 'td') ns = tdMode === 'osoba' ? 'tdo' : tdMode === 'firma' ? 'tdf' : 'td';
   else if (mainTab === 'notes') ns = ntMode === 'list' ? 'sl' : 'nt';
   currentExportNs = ns;
   wrap.style.display = ns ? 'flex' : 'none';
@@ -3260,8 +3400,10 @@ function updateSettingsPanel() {
   setText('set-about-label', 'O aplikaci', 'About');
   setText('set-about-version', '', ''); // handled below
   const verEl = document.getElementById('set-about-version');
-  if (verEl) verEl.innerHTML = (LANG==='en'?'Version: ':'Verze: ') + '<strong>v1.0</strong>';
+  if (verEl) verEl.innerHTML = (LANG==='en'?'Version: ':'Verze: ') + '<strong>'+APP_VERSION+'</strong>';
   setText('set-about-credit', 'Vytvořeno s pomocí Claude (Anthropic)', 'Created with Claude (Anthropic)');
+  setText('set-changelog-label', 'Historie změn', 'Changelog');
+  renderChangelog();
   setText('set-shortcuts-label', 'Zkratky', 'Shortcuts');
   setText('set-sc-compare', 'Spustit porovnání', 'Run comparison');
   setText('set-sc-copy', 'Kopírovat hodnotu (Testovací data)', 'Copy value (Test Data)');
@@ -3278,12 +3420,16 @@ function setLang(l) {
 }
 
 /* ══ INIT ══ */
+const _infoVerEl = document.getElementById('info-version');
+if (_infoVerEl) _infoVerEl.textContent = APP_VERSION;
+renderChangelog();
 loadStorage();
 renderAll();
 renderSubTabsSl();
 renderSlContents();
 updateArrowsSl();
 applyLang();
+document.title += ' ' + APP_VERSION;
 swLoad(); swRender();
 tmrLoad(); tmrRender();
 patLoad(); patRender();
