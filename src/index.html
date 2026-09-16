@@ -297,6 +297,8 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 .td-actions { display:flex; gap:8px; align-items:center; margin-bottom:.75rem; flex-wrap:wrap; }
 .select-all-btn { padding:5px 12px; font-size:12px; border-radius:7px; border:1px solid var(--border3); background:var(--bg2); color:var(--text3); cursor:pointer; transition:all .15s; }
 .select-all-btn:hover { background:var(--bg3); color:var(--text); }
+.field-visibility-btn { padding:5px 12px; font-size:12px; border-radius:7px; border:1px solid var(--border3); background:var(--bg2); color:var(--text3); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; }
+.field-visibility-btn:hover { background:var(--bg3); color:var(--text); }
 
 /* STOPKY */
 .sw-wrap { max-width:700px; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
@@ -1145,8 +1147,11 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 /* ══ VERZE APLIKACE ══
    Při každé změně: 1) zvýšit APP_VERSION, 2) přidat záznam na začátek CHANGELOG,
    3) pojmenovat výstupní soubor TestingToolbox_vX.html se stejným číslem. */
-const APP_VERSION = 'v20';
+const APP_VERSION = 'v21';
 const CHANGELOG = [
+  { v: 'v21', items: [
+    '+ Osoba/Firma — možnost skrýt u konkrétního záznamu pole, která pro něj nejsou relevantní (ikona očička), a kdykoliv je zase zobrazit'
+  ]},
   { v: 'v20', items: [
     '+ Testovací data — nové podsekce Osoba a Firma s pevnými poli pro ukládání již vytvořených údajů',
     '+ Podsekce Osoba: možnost uložit více osob (jméno, adresa, doklady, kontakty) a přepínat mezi nimi',
@@ -1670,6 +1675,8 @@ function handleImport(event, ns) {
 /* ══ TESTOVACÍ DATA — Osoba / Firma (pevná pole) ══ */
 const TD_OSOBA_FIELDS = ['Křestní jméno','Příjmení','Rodné příjmení','Datum narození','IČO (pro FOP)','Rodné číslo','Číslo OP','Číslo pasu','Ulice','Číslo popisné','Číslo orientační','Obec','PSČ','Telefon','E-mail'];
 const TD_FIRMA_FIELDS = ['Název','Právní forma','IČO','DIČ','Datová schránka','E-mail','Telefon','Ulice','Číslo popisné','Číslo orientační','Obec','PSČ'];
+const EYE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-2.16 3.19m-2.27 2.27A10.4 10.4 0 0 1 12 19c-7 0-10-7-10-7a13.13 13.13 0 0 1 3.43-4.9"/><line x1="2" x2="22" y1="2" y2="22"/></svg>';
 let tdMode = 'obecne';
 function switchTdMode(mode) {
   tdMode = mode;
@@ -1683,8 +1690,8 @@ function switchTdMode(mode) {
 /* ══ DATA STATE ══ */
 let DS = {
   td: {activeTab:0, scrollIdx:0, tabs:[{name:'Skupina 1', locked:false, rows:[{label:'',value:''}]}]},
-  tdo: {activeTab:0, scrollIdx:0, tabs:[{name:'Osoba 1', locked:false, rows: TD_OSOBA_FIELDS.map(f=>({label:f, value:''}))}]},
-  tdf: {activeTab:0, scrollIdx:0, tabs:[{name:'Firma 1', locked:false, rows: TD_FIRMA_FIELDS.map(f=>({label:f, value:''}))}]},
+  tdo: {activeTab:0, scrollIdx:0, tabs:[{name:'Osoba 1', locked:false, hiddenFields:[], rows: TD_OSOBA_FIELDS.map(f=>({label:f, value:''}))}]},
+  tdf: {activeTab:0, scrollIdx:0, tabs:[{name:'Firma 1', locked:false, hiddenFields:[], rows: TD_FIRMA_FIELDS.map(f=>({label:f, value:''}))}]},
   nt: {activeTab:0, scrollIdx:0, tabs:[{name:'Poznámka 1', locked:false, text:''}]}
 };
 function loadStorage() {
@@ -1836,6 +1843,8 @@ function renderTdContents() {
 function renderFixedContents(ns) {
   const wrap = document.getElementById(ns+'-contents'); if (!wrap) return; wrap.innerHTML = '';
   DS[ns].tabs.forEach((tab, ti) => {
+    if (!tab.hiddenFields) tab.hiddenFields = [];
+    const hidden = tab.hiddenFields;
     const sec = document.createElement('div'); sec.style.display = ti === DS[ns].activeTab ? 'block' : 'none';
     const actBar = document.createElement('div'); actBar.className = 'td-actions';
     const rw = document.createElement('div'); rw.className = 'data-rows'; rw.setAttribute('data-ti', ti);
@@ -1843,15 +1852,32 @@ function renderFixedContents(ns) {
     selAllBtn.onclick = () => { const boxes = rw.querySelectorAll('input[type=checkbox]'); const allChecked = Array.from(boxes).every(b=>b.checked); boxes.forEach(b=>{ b.checked=!allChecked; b.closest('.data-row').classList.toggle('checked',!allChecked); }); };
     const cpSelBtn = document.createElement('button'); cpSelBtn.className = 'copy-selected-btn'; cpSelBtn.textContent = '⎘ Kopírovat označené';
     cpSelBtn.onclick = () => {
-      const lines = []; rw.querySelectorAll('.data-row').forEach(row => { if (row.querySelector('input[type=checkbox]').checked) { const l=row.querySelector('.row-label-inp').value; const v=row.querySelector('.row-value-inp').value; lines.push((l?l+': ':'')+v); } });
+      const lines = []; rw.querySelectorAll('.data-row').forEach(row => { const cb = row.querySelector('input[type=checkbox]'); if (cb && cb.checked) { const l=row.querySelector('.row-label-inp').value; const v=row.querySelector('.row-value-inp').value; lines.push((l?l+': ':'')+v); } });
       if (!lines.length) { alert('Žádná položka není označena.'); return; }
       const text = lines.join('\n');
       const ok = () => { cpSelBtn.classList.add('copied'); cpSelBtn.textContent='✓ Zkopírováno'; setTimeout(()=>{ cpSelBtn.classList.remove('copied'); cpSelBtn.textContent='⎘ Kopírovat označené'; },1500); };
       smartCopy(text, ok);
     };
-    actBar.appendChild(selAllBtn); actBar.appendChild(cpSelBtn); sec.appendChild(actBar);
+    actBar.appendChild(selAllBtn); actBar.appendChild(cpSelBtn);
+    if (hidden.length) {
+      const eyeResetBtn = document.createElement('button'); eyeResetBtn.className = 'field-visibility-btn'; eyeResetBtn.innerHTML = EYE_SVG + ' Zobrazit skrytá pole ('+hidden.length+')';
+      eyeResetBtn.title = 'Zobrazit všechna skrytá pole u tohoto záznamu';
+      eyeResetBtn.onclick = () => { tab.hiddenFields = []; markDirty(); renderFixedContents(ns); };
+      actBar.appendChild(eyeResetBtn);
+    }
+    sec.appendChild(actBar);
     tab.rows.forEach((row, ri) => {
-      const rowEl=document.createElement('div'); rowEl.className='data-row';
+      const isHidden = hidden.includes(row.label);
+      const rowEl=document.createElement('div'); rowEl.className='data-row'+(isHidden?' row-hidden':'');
+      if (isHidden) {
+        rowEl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;opacity:.55;';
+        const lblSpan = document.createElement('span'); lblSpan.textContent = row.label; lblSpan.style.cssText = 'flex:1;font-size:12px;color:var(--text4);';
+        const eyeBtn = document.createElement('button'); eyeBtn.className='copy-btn'; eyeBtn.title = 'Zobrazit pole "'+row.label+'" u tohoto záznamu'; eyeBtn.innerHTML = EYE_OFF_SVG;
+        eyeBtn.onclick = () => toggleFieldVisibility(ns, ti, row.label);
+        rowEl.appendChild(lblSpan); rowEl.appendChild(eyeBtn);
+        rw.appendChild(rowEl);
+        return;
+      }
       const chkWrap=document.createElement('div'); chkWrap.className='row-check'; const chk=document.createElement('input'); chk.type='checkbox'; chk.onchange=()=>rowEl.classList.toggle('checked',chk.checked); chkWrap.appendChild(chk);
       const fields=document.createElement('div'); fields.className='row-fields';
       const lbl=document.createElement('input'); lbl.className='row-label-inp'; lbl.value=row.label; lbl.disabled=true; lbl.title='Název pole je pevně dané';
@@ -1860,12 +1886,23 @@ function renderFixedContents(ns) {
       val.addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); cpBtn.click(); } });
       fields.appendChild(lbl); fields.appendChild(val);
       const acts=document.createElement('div'); acts.className='row-actions';
+      const eyeBtn = document.createElement('button'); eyeBtn.className='copy-btn'; eyeBtn.title = 'Skrýt pole "'+row.label+'" u tohoto záznamu (irelevantní údaj)'; eyeBtn.innerHTML = EYE_SVG;
+      eyeBtn.onclick = () => toggleFieldVisibility(ns, ti, row.label);
+      acts.appendChild(eyeBtn);
       acts.appendChild(cpBtn);
       rowEl.appendChild(chkWrap); rowEl.appendChild(fields); rowEl.appendChild(acts); rw.appendChild(rowEl);
     });
     sec.appendChild(rw);
     wrap.appendChild(sec);
   });
+}
+function toggleFieldVisibility(ns, ti, label) {
+  const tab = DS[ns].tabs[ti]; if (!tab) return;
+  if (!tab.hiddenFields) tab.hiddenFields = [];
+  const idx = tab.hiddenFields.indexOf(label);
+  if (idx === -1) tab.hiddenFields.push(label); else tab.hiddenFields.splice(idx, 1);
+  markDirty();
+  renderFixedContents(ns);
 }
 function renderNtContents() {
   const wrap = document.getElementById('nt-contents'); wrap.innerHTML = '';
@@ -3124,8 +3161,8 @@ function addSubTab(ns) {
   const d = DS[ns];
   let newTab;
   if (ns === 'td') newTab = {name:'Skupina '+(d.tabs.length+1), locked:false, rows:[{label:'',value:''}]};
-  else if (ns === 'tdo') newTab = {name:'Osoba '+(d.tabs.length+1), locked:false, rows: TD_OSOBA_FIELDS.map(f=>({label:f, value:''}))};
-  else if (ns === 'tdf') newTab = {name:'Firma '+(d.tabs.length+1), locked:false, rows: TD_FIRMA_FIELDS.map(f=>({label:f, value:''}))};
+  else if (ns === 'tdo') newTab = {name:'Osoba '+(d.tabs.length+1), locked:false, hiddenFields:[], rows: TD_OSOBA_FIELDS.map(f=>({label:f, value:''}))};
+  else if (ns === 'tdf') newTab = {name:'Firma '+(d.tabs.length+1), locked:false, hiddenFields:[], rows: TD_FIRMA_FIELDS.map(f=>({label:f, value:''}))};
   else newTab = {name:'Poznámka '+(d.tabs.length+1), locked:false, entries:[{title:'',text:''}]};
   d.tabs.push(newTab);
   d.activeTab = d.tabs.length-1; d.scrollIdx = d.activeTab;
