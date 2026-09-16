@@ -299,6 +299,10 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 .select-all-btn:hover { background:var(--bg3); color:var(--text); }
 .field-visibility-btn { padding:5px 12px; font-size:12px; border-radius:7px; border:1px solid var(--border3); background:var(--bg2); color:var(--text3); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; }
 .field-visibility-btn:hover { background:var(--bg3); color:var(--text); }
+.cb-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.cb-line-inp { flex:1; padding:8px 10px; font-size:13px; border-radius:8px; border:1px solid var(--border3); background:var(--bg2); color:var(--text); }
+.cb-line-inp:focus { outline:none; border-color:var(--accent); }
+.cb-empty { font-size:12px; color:var(--text4); padding:8px 0; }
 
 /* STOPKY */
 .sw-wrap { max-width:700px; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
@@ -995,6 +999,7 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
   <div class="nt-mode-bar">
     <div class="nt-mode-tab active" id="nt-mode-notes" onclick="switchNtMode('notes')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M12 2v4"/><path d="M16 2v4"/><rect width="16" height="18" x="4" y="4" rx="2"/><path d="M8 10h6"/><path d="M8 14h8"/><path d="M8 18h5"/></svg> Poznámky</div>
     <div class="nt-mode-tab" id="nt-mode-list" onclick="switchNtMode('list')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h1"/><path d="M3 12h1"/><path d="M3 18h1"/><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/></svg> Seznam</div>
+    <div class="nt-mode-tab" id="nt-mode-clipboard" onclick="switchNtMode('clipboard')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 14h.01"/><path d="M13 14h2"/><path d="M9 18h.01"/><path d="M13 18h2"/></svg> Schránka</div>
   </div>
 
   <!-- Poznámky -->
@@ -1027,6 +1032,21 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
       <button class="add-subtab-btn" onclick="addSubTab('sl')" title="Přidat seznam">＋</button>
     </div>
     <div id="sl-contents"></div>
+  </div>
+
+  <!-- Schránka -->
+  <div class="nt-mode-section" id="nt-section-clipboard">
+    <div class="section-toolbar">
+      <button class="section-btn" onclick="exportSection('cb')" title="Export"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-1.5"/><path d="M2 13h10"/><path d="m5 10-3 3 3 3"/></svg> Export</button>
+      <button class="section-btn" onclick="importSection('cb')" title="Import"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></svg> Import</button>
+      <input type="file" id="import-file-cb" accept=".json" style="display:none" onchange="handleImport(event,'cb')">
+    </div>
+    <p style="font-size:12px;color:var(--text4);margin:-4px 0 12px">Rychlé jednořádkové poznámky — každý řádek jde samostatně zkopírovat nebo smazat.</p>
+    <div class="td-actions">
+      <button class="select-all-btn" onclick="cbAddLine()">＋ Přidat řádek</button>
+      <button class="copy-selected-btn" onclick="cbCopyAll(this)">⎘ Kopírovat vše</button>
+    </div>
+    <div id="cb-list"></div>
   </div>
 </div>
 
@@ -1147,8 +1167,16 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 /* ══ VERZE APLIKACE ══
    Při každé změně: 1) zvýšit APP_VERSION, 2) přidat záznam na začátek CHANGELOG,
    3) pojmenovat výstupní soubor TestingToolbox_vX.html se stejným číslem. */
-const APP_VERSION = 'v21';
+const APP_VERSION = 'v23';
 const CHANGELOG = [
+  { v: 'v23', items: [
+    '+ Poznámky — nová podsekce Schránka: rychlé jednořádkové poznámky, každý řádek jde samostatně zkopírovat nebo smazat',
+    '+ Schránka — tlačítko "Kopírovat vše" zkopíruje všechny řádky najednou',
+    '+ Export/Import JSON i pro Schránku'
+  ]},
+  { v: 'v22', items: [
+    '✓ Osoba/Firma — skrytá pole se u zamčeného záznamu vůbec nezobrazují (dřív zůstal viditelný alespoň název pole), pro čistší vzhled'
+  ]},
   { v: 'v21', items: [
     '+ Osoba/Firma — možnost skrýt u konkrétního záznamu pole, která pro něj nejsou relevantní (ikona očička), a kdykoliv je zase zobrazit'
   ]},
@@ -1631,17 +1659,19 @@ function markDirty() { setSaveDirty(true); }
 function saveData() {
   syncAllDOM();
   try {
-    localStorage.setItem('app_v1', JSON.stringify({td: DS.td, tdo: DS.tdo, tdf: DS.tdf, nt: DS.nt, sl: DS.sl}));
+    localStorage.setItem('app_v1', JSON.stringify({td: DS.td, tdo: DS.tdo, tdf: DS.tdf, nt: DS.nt, sl: DS.sl, cb: DS.cb}));
     dirty = false; autoSaveTimer = null;
   } catch(e) { console.error('Auto-save failed:', e.message); }
 }
 
 
 function exportSection(ns) {
-  if (ns === 'sl') syncSlDOM(); else syncAllDOM();
-  const names = {td:'testovaci-data', tdo:'testovaci-data-osoba', tdf:'testovaci-data-firma', nt:'poznamky', sl:'seznam'};
-  const data = ns === 'sl' ? DS.sl.tabs : DS[ns].tabs;
-  const blob = new Blob([JSON.stringify({version:3, section:ns, exported:new Date().toISOString(), tabs:data}, null, 2)], {type:'application/json'});
+  if (ns === 'sl') syncSlDOM(); else if (ns === 'cb') syncCbDOM(); else syncAllDOM();
+  const names = {td:'testovaci-data', tdo:'testovaci-data-osoba', tdf:'testovaci-data-firma', nt:'poznamky', sl:'seznam', cb:'schranka'};
+  const payload = ns === 'cb'
+    ? {version:3, section:ns, exported:new Date().toISOString(), items: DS.cb.items}
+    : {version:3, section:ns, exported:new Date().toISOString(), tabs: ns === 'sl' ? DS.sl.tabs : DS[ns].tabs};
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = (names[ns]||ns)+'-'+new Date().toISOString().slice(0,10)+'.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 500);
@@ -1649,12 +1679,20 @@ function exportSection(ns) {
 function importSection(ns) { const el = document.getElementById('import-file-'+ns); el.value = ''; el.click(); }
 function handleImport(event, ns) {
   const file = event.target.files[0]; if (!file) return;
-  const labels = {td:'testovací data', tdo:'testovací data (Osoba)', tdf:'testovací data (Firma)', nt:'poznámky', sl:'seznam'};
+  const labels = {td:'testovací data', tdo:'testovací data (Osoba)', tdf:'testovací data (Firma)', nt:'poznámky', sl:'seznam', cb:'schránka'};
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
       const parsed = JSON.parse(e.target.result);
       if (!confirm('Import přepíše stávající '+(labels[ns]||ns)+'. Pokračovat?')) return;
+      if (ns === 'cb') {
+        let items = null;
+        if (Array.isArray(parsed.items)) items = parsed.items;
+        else if (parsed.cb && Array.isArray(parsed.cb.items)) items = parsed.cb.items;
+        if (!items || !items.length) { alert('Soubor neobsahuje platná data.'); return; }
+        DS.cb.items = items; markDirty(); renderCbList();
+        return;
+      }
       let tabs = null;
       if (parsed.section === ns && Array.isArray(parsed.tabs)) tabs = parsed.tabs;
       else if (parsed[ns] && Array.isArray(parsed[ns].tabs)) tabs = parsed[ns].tabs;
@@ -1692,7 +1730,8 @@ let DS = {
   td: {activeTab:0, scrollIdx:0, tabs:[{name:'Skupina 1', locked:false, rows:[{label:'',value:''}]}]},
   tdo: {activeTab:0, scrollIdx:0, tabs:[{name:'Osoba 1', locked:false, hiddenFields:[], rows: TD_OSOBA_FIELDS.map(f=>({label:f, value:''}))}]},
   tdf: {activeTab:0, scrollIdx:0, tabs:[{name:'Firma 1', locked:false, hiddenFields:[], rows: TD_FIRMA_FIELDS.map(f=>({label:f, value:''}))}]},
-  nt: {activeTab:0, scrollIdx:0, tabs:[{name:'Poznámka 1', locked:false, text:''}]}
+  nt: {activeTab:0, scrollIdx:0, tabs:[{name:'Poznámka 1', locked:false, text:''}]},
+  cb: {items:[{text:''}]}
 };
 function loadStorage() {
   try {
@@ -1704,6 +1743,7 @@ function loadStorage() {
       if (p.tdf && p.tdf.tabs) DS.tdf = p.tdf;
       if (p.nt && p.nt.tabs) DS.nt = p.nt;
       if (p.sl && p.sl.tabs) DS.sl = p.sl;
+      if (p.cb && Array.isArray(p.cb.items)) DS.cb = p.cb;
     }
     setSaveDirty(false);
   } catch(e) {}
@@ -1751,6 +1791,47 @@ function deleteRow(ti, ri) { syncTdDOM(); DS.td.tabs[ti].rows.splice(ri, 1); mar
 function copyVal(btn, val) {
   const ok = () => { btn.classList.add('copied'); btn.textContent='✓'; setTimeout(()=>{ btn.classList.remove('copied'); btn.textContent='⧉'; }, 1200); };
   smartCopy(val, ok);
+}
+
+/* ══ SCHRÁNKA (rychlé jednořádkové poznámky) ══ */
+function renderCbList() {
+  const wrap = document.getElementById('cb-list'); if (!wrap) return; wrap.innerHTML = '';
+  if (!DS.cb.items.length) { const p = document.createElement('div'); p.className='cb-empty'; p.textContent='Zatím žádné řádky.'; wrap.appendChild(p); return; }
+  DS.cb.items.forEach((item, i) => {
+    const row = document.createElement('div'); row.className = 'cb-row';
+    const inp = document.createElement('input'); inp.className = 'cb-line-inp'; inp.type='text'; inp.placeholder='Text poznámky…'; inp.value = item.text;
+    inp.oninput = () => { item.text = inp.value; markDirty(); };
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); cbAddLine(i); }
+    });
+    const cpBtn = document.createElement('button'); cpBtn.className = 'copy-btn'; cpBtn.textContent = '⧉'; cpBtn.title = 'Kopírovat řádek'; cpBtn.onclick = () => copyVal(cpBtn, inp.value);
+    const dlBtn = document.createElement('button'); dlBtn.className = 'row-del-btn'; dlBtn.textContent = '×'; dlBtn.title = 'Smazat řádek'; dlBtn.onclick = () => cbDeleteLine(i);
+    row.appendChild(inp); row.appendChild(cpBtn); row.appendChild(dlBtn);
+    wrap.appendChild(row);
+  });
+}
+function cbAddLine(afterIdx) {
+  syncCbDOM();
+  const idx = (typeof afterIdx === 'number') ? afterIdx + 1 : DS.cb.items.length;
+  DS.cb.items.splice(idx, 0, {text:''});
+  markDirty(); renderCbList();
+  const inps = document.querySelectorAll('#cb-list .cb-line-inp');
+  if (inps[idx]) inps[idx].focus();
+}
+function cbDeleteLine(i) {
+  syncCbDOM();
+  DS.cb.items.splice(i, 1);
+  markDirty(); renderCbList();
+}
+function cbCopyAll(btn) {
+  syncCbDOM();
+  const text = DS.cb.items.map(it => it.text).filter(t => t !== '').join('\n');
+  if (!text) { alert('Schránka je prázdná.'); return; }
+  const ok = () => { if (!btn) return; const orig = btn.textContent; btn.classList.add('copied'); btn.textContent = '✓ Zkopírováno'; setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1500); };
+  smartCopy(text, ok);
+}
+function syncCbDOM() {
+  document.querySelectorAll('#cb-list .cb-line-inp').forEach((inp, i) => { if (DS.cb.items[i]) DS.cb.items[i].text = inp.value; });
 }
 
 /* ══ RENDER ══ */
@@ -1868,6 +1949,7 @@ function renderFixedContents(ns) {
     sec.appendChild(actBar);
     tab.rows.forEach((row, ri) => {
       const isHidden = hidden.includes(row.label);
+      if (isHidden && tab.locked) return;
       const rowEl=document.createElement('div'); rowEl.className='data-row'+(isHidden?' row-hidden':'');
       if (isHidden) {
         rowEl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;opacity:.55;';
@@ -2916,7 +2998,7 @@ DS.sl = {
 
 function switchNtMode(mode) {
   ntMode = mode;
-  ['notes','list'].forEach(m => {
+  ['notes','list','clipboard'].forEach(m => {
     document.getElementById('nt-mode-'+m)?.classList.toggle('active', m === mode);
     document.getElementById('nt-section-'+m)?.classList.toggle('active', m === mode);
   });
@@ -3279,7 +3361,7 @@ function updateCtxButtons(mainTab, ntMode) {
   if (!wrap) return;
   let ns = null;
   if (mainTab === 'td') ns = tdMode === 'osoba' ? 'tdo' : tdMode === 'firma' ? 'tdf' : 'td';
-  else if (mainTab === 'notes') ns = ntMode === 'list' ? 'sl' : 'nt';
+  else if (mainTab === 'notes') ns = ntMode === 'list' ? 'sl' : ntMode === 'clipboard' ? 'cb' : 'nt';
   currentExportNs = ns;
   wrap.style.display = ns ? 'flex' : 'none';
   const expBtn = document.getElementById('ctx-export-btn');
@@ -3465,6 +3547,7 @@ renderAll();
 renderSubTabsSl();
 renderSlContents();
 updateArrowsSl();
+renderCbList();
 applyLang();
 document.title += ' ' + APP_VERSION;
 swLoad(); swRender();
