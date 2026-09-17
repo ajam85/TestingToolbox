@@ -1,4 +1,4 @@
-// TestingToolbox v23 — Electron main process
+// TestingToolbox v25 — Electron main process
 const { app, BrowserWindow, ipcMain, clipboard } = require('electron');
 const path = require('path');
 

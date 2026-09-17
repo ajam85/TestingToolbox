@@ -299,9 +299,12 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 .select-all-btn:hover { background:var(--bg3); color:var(--text); }
 .field-visibility-btn { padding:5px 12px; font-size:12px; border-radius:7px; border:1px solid var(--border3); background:var(--bg2); color:var(--text3); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; }
 .field-visibility-btn:hover { background:var(--bg3); color:var(--text); }
-.cb-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-.cb-line-inp { flex:1; padding:8px 10px; font-size:13px; border-radius:8px; border:1px solid var(--border3); background:var(--bg2); color:var(--text); }
-.cb-line-inp:focus { outline:none; border-color:var(--accent); }
+.cb-row { display:flex; align-items:stretch; gap:0; margin-bottom:8px; background:var(--row-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; transition:border-color .15s; }
+.cb-row:hover { border-color:var(--border3); }
+.cb-line-inp { flex:1; min-width:0; padding:8px 10px; font-size:13px; border:none; background:transparent; color:var(--text); }
+.cb-line-inp:focus { outline:none; background:var(--bg3); }
+.cb-row .copy-btn { flex:none; width:38px; border-bottom:none; border-left:1px solid var(--border2); }
+.cb-row .row-del-btn { flex:none; width:38px; border-left:1px solid var(--border2); }
 .cb-empty { font-size:12px; color:var(--text4); padding:8px 0; }
 
 /* STOPKY */
@@ -1167,8 +1170,14 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 /* ══ VERZE APLIKACE ══
    Při každé změně: 1) zvýšit APP_VERSION, 2) přidat záznam na začátek CHANGELOG,
    3) pojmenovat výstupní soubor TestingToolbox_vX.html se stejným číslem. */
-const APP_VERSION = 'v23';
+const APP_VERSION = 'v25';
 const CHANGELOG = [
+  { v: 'v25', items: [
+    '✓ Osoba/Firma — oprava vážné chyby: pokud byla u záznamu skrytá pole, docházelo k přepisu/vymazání jiných hodnot (např. Datum narození) a nešlo přepínat záložky, zamknout ani přejmenovat záznam'
+  ]},
+  { v: 'v24', items: [
+    '✓ Schránka — oprava vzhledu řádku (textové pole bylo krátké, tlačítko kopírovat moc dlouhé), teď vypadá stejně jako řádky v Testovacích datech'
+  ]},
   { v: 'v23', items: [
     '+ Poznámky — nová podsekce Schránka: rychlé jednořádkové poznámky, každý řádek jde samostatně zkopírovat nebo smazat',
     '+ Schránka — tlačítko "Kopírovat vše" zkopíruje všechny řádky najednou',
@@ -1760,7 +1769,12 @@ function syncFixedDOM(ns) {
   DS[ns].tabs.forEach((tab, ti) => {
     const ni = document.querySelector('#'+ns+'-sub-tabs .tab-name-inp[data-ti="'+ti+'"]'); if (ni) tab.name = ni.value;
     const rowEls = document.querySelectorAll('#'+ns+'-contents .data-rows[data-ti="'+ti+'"] .data-row');
-    tab.rows.forEach((row, ri) => { const el = rowEls[ri]; if (el) row.value = el.querySelector('.row-value-inp').value; });
+    rowEls.forEach(el => {
+      const ri = parseInt(el.getAttribute('data-ri'), 10);
+      if (isNaN(ri) || !tab.rows[ri]) return;
+      const valInp = el.querySelector('.row-value-inp');
+      if (valInp) tab.rows[ri].value = valInp.value;
+    });
   });
 }
 function syncNtDOM() {
@@ -1950,7 +1964,7 @@ function renderFixedContents(ns) {
     tab.rows.forEach((row, ri) => {
       const isHidden = hidden.includes(row.label);
       if (isHidden && tab.locked) return;
-      const rowEl=document.createElement('div'); rowEl.className='data-row'+(isHidden?' row-hidden':'');
+      const rowEl=document.createElement('div'); rowEl.className='data-row'+(isHidden?' row-hidden':''); rowEl.setAttribute('data-ri', ri);
       if (isHidden) {
         rowEl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;opacity:.55;';
         const lblSpan = document.createElement('span'); lblSpan.textContent = row.label; lblSpan.style.cssText = 'flex:1;font-size:12px;color:var(--text4);';

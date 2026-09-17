@@ -1,6 +1,6 @@
 {
   "name": "testingtoolbox",
-  "version": "23.0.0",
+  "version": "25.0.0",
   "description": "TestingToolbox – nastroj pro manualni testovani software",
   "main": "main.js",
   "author": "",

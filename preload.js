@@ -1,4 +1,4 @@
-// TestingToolbox v23 — Electron preload
+// TestingToolbox v25 — Electron preload
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   copyText: (text) => ipcRenderer.invoke('clipboard-write', text)
