@@ -17,9 +17,9 @@ echo Node.js: & node --version
 echo npm:     & npm --version
 echo.
 
-echo [1/2] Instalace zavislosti...
-npm install
-IF %ERRORLEVEL% NEQ 0 ( echo CHYBA: npm install selhal & pause & exit /b 1 )
+echo [1/2] Instalace zamknutych zavislosti...
+npm ci
+IF %ERRORLEVEL% NEQ 0 ( echo CHYBA: npm ci selhal & pause & exit /b 1 )
 
 echo.
 echo [2/2] Sestavovani portable .exe ^(bez podepisovani^)...
@@ -33,6 +33,6 @@ echo.
 echo ============================================
 echo  HOTOVO! Soubor je ve slozce dist\
 echo ============================================
-dir dist\TestingToolbox.exe 2>nul || dir dist\*.exe 2>nul
+dir dist\TestingToolbox-Portable-*.exe 2>nul || dir dist\*.exe 2>nul
 echo.
 pause

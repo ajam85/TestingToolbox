@@ -1170,8 +1170,18 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 /* ══ VERZE APLIKACE ══
    Při každé změně: 1) zvýšit APP_VERSION, 2) přidat záznam na začátek CHANGELOG,
    3) pojmenovat výstupní soubor TestingToolbox_vX.html se stejným číslem. */
-const APP_VERSION = 'v25';
+const APP_VERSION = 'v27';
 const CHANGELOG = [
+  { v: 'v27', items: [
+    '✓ Testovací data (Obecné/Osoba/Firma) a Poznámky — nelze už smazat úplně poslední záložku (dřív by tím sekce přišla o všechny záznamy)'
+  ]},
+  { v: 'v26', items: [
+    '✓ Zabezpečení aplikace (Electron) — omezen přístup ke schránce jen z důvěryhodného zdroje, zákaz opuštění aplikace přes odkaz, zákaz vyskakovacích/vložených oken',
+    '✓ Generátor souborů — PDF je teď skutečný platný PDF dokument (dřív šlo o text s příponou .pdf)',
+    '✓ Generátor souborů — bezpečné ošetření názvu vytvářeného souboru',
+    '✓ Import JSON — přidán limit velikosti souboru a počtu/délky položek, poškozený soubor se srozumitelně odmítne',
+    '✓ Úklid nepoužívaného kódu'
+  ]},
   { v: 'v25', items: [
     '✓ Osoba/Firma — oprava vážné chyby: pokud byla u záznamu skrytá pole, docházelo k přepisu/vymazání jiných hodnot (např. Datum narození) a nešlo přepínat záložky, zamknout ani přejmenovat záznam'
   ]},
@@ -1686,32 +1696,150 @@ function exportSection(ns) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 500);
 }
 function importSection(ns) { const el = document.getElementById('import-file-'+ns); el.value = ''; el.click(); }
+
+const IMPORT_LIMITS = Object.freeze({
+  maxBytes: 5 * 1024 * 1024,
+  maxTabs: 100,
+  maxRows: 500,
+  maxItems: 1000,
+  maxEntries: 100,
+  maxNameLength: 200,
+  maxLabelLength: 200,
+  maxValueLength: 10000,
+  maxNoteLength: 100000,
+  maxHiddenFields: 100
+});
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function boundedString(value, limit, fallback, fieldName) {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value !== 'string') throw new Error(fieldName + ' musí být text.');
+  if (value.length > limit) throw new Error(fieldName + ' je příliš dlouhé.');
+  return value;
+}
+
+function boundedArray(value, limit, fieldName) {
+  if (!Array.isArray(value)) throw new Error(fieldName + ' musí být pole.');
+  if (value.length > limit) throw new Error(fieldName + ' obsahuje příliš mnoho položek.');
+  return value;
+}
+
+function normalizeCommonTab(tab, index, defaultName) {
+  if (!isPlainObject(tab)) throw new Error('Záložka '+(index + 1)+' není objekt.');
+  return {
+    name: boundedString(tab.name, IMPORT_LIMITS.maxNameLength, defaultName+' '+(index + 1), 'Název záložky'),
+    locked: tab.locked === true
+  };
+}
+
+function normalizeRows(rows, fixedLabels, tabIndex) {
+  const source = boundedArray(rows, IMPORT_LIMITS.maxRows, 'Řádky záložky '+(tabIndex + 1));
+  if (fixedLabels) {
+    const values = new Map();
+    source.forEach(row => {
+      if (!isPlainObject(row) || typeof row.label !== 'string') return;
+      if (!values.has(row.label)) values.set(row.label, boundedString(row.value, IMPORT_LIMITS.maxValueLength, '', 'Hodnota pole'));
+    });
+    return fixedLabels.map(label => ({label, value: values.get(label) || ''}));
+  }
+  return source.map((row, rowIndex) => {
+    if (!isPlainObject(row)) throw new Error('Řádek '+(rowIndex + 1)+' není objekt.');
+    return {
+      label: boundedString(row.label, IMPORT_LIMITS.maxLabelLength, '', 'Název řádku'),
+      value: boundedString(row.value, IMPORT_LIMITS.maxValueLength, '', 'Hodnota řádku')
+    };
+  });
+}
+
+function normalizeTabs(tabs, ns) {
+  const source = boundedArray(tabs, IMPORT_LIMITS.maxTabs, 'Záložky');
+  if (!source.length) throw new Error('Soubor neobsahuje žádné záložky.');
+  return source.map((tab, index) => {
+    const base = normalizeCommonTab(tab, index, ns === 'sl' ? 'Seznam' : ns === 'nt' ? 'Poznámka' : ns === 'tdo' ? 'Osoba' : ns === 'tdf' ? 'Firma' : 'Skupina');
+    if (ns === 'td') return {...base, rows: normalizeRows(tab.rows, null, index)};
+    if (ns === 'tdo') return {...base, hiddenFields: Array.isArray(tab.hiddenFields) ? tab.hiddenFields.filter(v => TD_OSOBA_FIELDS.includes(v)).slice(0, IMPORT_LIMITS.maxHiddenFields) : [], rows: normalizeRows(tab.rows, TD_OSOBA_FIELDS, index)};
+    if (ns === 'tdf') return {...base, hiddenFields: Array.isArray(tab.hiddenFields) ? tab.hiddenFields.filter(v => TD_FIRMA_FIELDS.includes(v)).slice(0, IMPORT_LIMITS.maxHiddenFields) : [], rows: normalizeRows(tab.rows, TD_FIRMA_FIELDS, index)};
+    if (ns === 'nt') {
+      const entries = Array.isArray(tab.entries) ? tab.entries : [{title: tab.title, text: tab.text}];
+      return {...base, entries: boundedArray(entries, IMPORT_LIMITS.maxEntries, 'Poznámky').map((entry, entryIndex) => {
+        if (!isPlainObject(entry)) throw new Error('Poznámka '+(entryIndex + 1)+' není objekt.');
+        return {
+          title: boundedString(entry.title, IMPORT_LIMITS.maxNameLength, '', 'Nadpis poznámky'),
+          text: boundedString(entry.text, IMPORT_LIMITS.maxNoteLength, '', 'Text poznámky')
+        };
+      })};
+    }
+    return {...base, items: boundedArray(tab.items, IMPORT_LIMITS.maxItems, 'Položky seznamu').map((item, itemIndex) => {
+      if (!isPlainObject(item)) throw new Error('Položka '+(itemIndex + 1)+' není objekt.');
+      return {
+        text: boundedString(item.text, IMPORT_LIMITS.maxValueLength, '', 'Text položky'),
+        checked: item.checked === true,
+        bold: item.bold === true,
+        underline: item.underline === true,
+        locked: item.locked === true,
+        num: Number.isInteger(item.num) && item.num >= 0 && item.num <= 999999 ? item.num : 0
+      };
+    })};
+  });
+}
+
+function extractImportedValue(parsed, ns) {
+  if (!isPlainObject(parsed)) throw new Error('Kořen JSONu musí být objekt.');
+  if (ns === 'cb') {
+    if (Array.isArray(parsed.items)) return parsed.items;
+    if (isPlainObject(parsed.cb) && Array.isArray(parsed.cb.items)) return parsed.cb.items;
+    if (isPlainObject(parsed[ns]) && Array.isArray(parsed[ns].items)) return parsed[ns].items;
+    throw new Error('Soubor neobsahuje položky schránky.');
+  }
+  if (Array.isArray(parsed.tabs)) return parsed.tabs;
+  if (isPlainObject(parsed[ns]) && Array.isArray(parsed[ns].tabs)) return parsed[ns].tabs;
+  throw new Error('Soubor neobsahuje záložky.');
+}
+
+function normalizeImportedSection(parsed, ns, preserveSelection) {
+  if (ns === 'cb') {
+    const items = boundedArray(extractImportedValue(parsed, ns), IMPORT_LIMITS.maxItems, 'Položky schránky');
+    return {items: items.map((item, index) => {
+      if (!isPlainObject(item)) throw new Error('Položka schránky '+(index + 1)+' není objekt.');
+      return {text: boundedString(item.text, IMPORT_LIMITS.maxValueLength, '', 'Text schránky')};
+    })};
+  }
+  const tabs = normalizeTabs(extractImportedValue(parsed, ns), ns);
+  const requestedActive = isPlainObject(parsed) && Number.isInteger(parsed.activeTab) ? parsed.activeTab : 0;
+  const requestedScroll = isPlainObject(parsed) && Number.isInteger(parsed.scrollIdx) ? parsed.scrollIdx : 0;
+  return {
+    activeTab: preserveSelection ? Math.max(0, Math.min(tabs.length - 1, requestedActive)) : 0,
+    scrollIdx: preserveSelection ? Math.max(0, Math.min(tabs.length - 1, requestedScroll)) : 0,
+    tabs
+  };
+}
+
 function handleImport(event, ns) {
   const file = event.target.files[0]; if (!file) return;
   const labels = {td:'testovací data', tdo:'testovací data (Osoba)', tdf:'testovací data (Firma)', nt:'poznámky', sl:'seznam', cb:'schránka'};
+  if (!Object.prototype.hasOwnProperty.call(labels, ns)) { alert('Neznámá sekce.'); return; }
+  if (file.size > IMPORT_LIMITS.maxBytes) {
+    alert('Importovaný soubor je příliš velký (maximum je 5 MB).');
+    return;
+  }
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
       const parsed = JSON.parse(e.target.result);
+      const normalized = normalizeImportedSection(parsed, ns, false);
       if (!confirm('Import přepíše stávající '+(labels[ns]||ns)+'. Pokračovat?')) return;
       if (ns === 'cb') {
-        let items = null;
-        if (Array.isArray(parsed.items)) items = parsed.items;
-        else if (parsed.cb && Array.isArray(parsed.cb.items)) items = parsed.cb.items;
-        if (!items || !items.length) { alert('Soubor neobsahuje platná data.'); return; }
-        DS.cb.items = items; markDirty(); renderCbList();
+        DS.cb = normalized; markDirty(); renderCbList();
         return;
       }
-      let tabs = null;
-      if (parsed.section === ns && Array.isArray(parsed.tabs)) tabs = parsed.tabs;
-      else if (parsed[ns] && Array.isArray(parsed[ns].tabs)) tabs = parsed[ns].tabs;
-      else if (Array.isArray(parsed.tabs)) tabs = parsed.tabs;
-      if (!tabs || !tabs.length) { alert('Soubor neobsahuje platná data.'); return; }
       if (ns === 'sl') {
-        DS.sl.tabs = tabs; DS.sl.activeTab = 0; DS.sl.scrollIdx = 0;
+        DS.sl = normalized;
         markDirty(); renderSubTabsSl(); renderSlContents(); updateArrowsSl();
       } else {
-        DS[ns].tabs = tabs; DS[ns].activeTab = 0; DS[ns].scrollIdx = 0;
+        DS[ns] = normalized;
         markDirty(); renderAll();
       }
     } catch(err) { alert('Chyba:\n' + err.message); }
@@ -1747,12 +1875,13 @@ function loadStorage() {
     const raw = localStorage.getItem('app_v1');
     if (raw) {
       const p = JSON.parse(raw);
-      if (p.td && p.td.tabs) DS.td = p.td;
-      if (p.tdo && p.tdo.tabs) DS.tdo = p.tdo;
-      if (p.tdf && p.tdf.tabs) DS.tdf = p.tdf;
-      if (p.nt && p.nt.tabs) DS.nt = p.nt;
-      if (p.sl && p.sl.tabs) DS.sl = p.sl;
-      if (p.cb && Array.isArray(p.cb.items)) DS.cb = p.cb;
+      ['td','tdo','tdf','nt','sl','cb'].forEach(ns => {
+        try {
+          if (p && p[ns]) DS[ns] = normalizeImportedSection(p[ns], ns, true);
+        } catch (e) {
+          console.warn('Ignoring invalid saved data for '+ns, e.message);
+        }
+      });
     }
     setSaveDirty(false);
   } catch(e) {}
@@ -1785,13 +1914,8 @@ function syncNtDOM() {
 }
 function scrollTabs(ns, dir) { DS[ns].scrollIdx = Math.max(0, Math.min(DS[ns].tabs.length-1, DS[ns].scrollIdx+dir)); renderSubTabs(ns); updateArrows(ns); }
 function updateArrows(ns) { document.getElementById(ns+'-arr-l').disabled = DS[ns].scrollIdx <= 0; document.getElementById(ns+'-arr-r').disabled = DS[ns].scrollIdx >= DS[ns].tabs.length-1; }
-function addSubTab(ns) {
-  syncAllDOM(); const d = DS[ns];
-  d.tabs.push(ns === 'td' ? {name:'Skupina '+(d.tabs.length+1), locked:false, rows:[{label:'',value:''}]} : {name:'Poznámka '+(d.tabs.length+1), locked:false, text:''});
-  d.activeTab = d.tabs.length-1; d.scrollIdx = d.activeTab; markDirty(); renderAll();
-}
 function deleteSubTab(ns, ti) {
-  if (DS[ns].tabs[ti].locked) return; if (!confirm('Smazat "'+DS[ns].tabs[ti].name+'"?')) return;
+  if (DS[ns].tabs[ti].locked) return; if (DS[ns].tabs.length <= 1) { alert('Poslední záložku nelze smazat.'); return; } if (!confirm('Smazat "'+DS[ns].tabs[ti].name+'"?')) return;
   syncAllDOM(); DS[ns].tabs.splice(ti, 1); DS[ns].activeTab = Math.min(DS[ns].activeTab, DS[ns].tabs.length-1); DS[ns].scrollIdx = Math.min(DS[ns].scrollIdx, Math.max(0, DS[ns].tabs.length-1)); markDirty(); renderAll();
 }
 function switchSubTab(ns, ti) { syncAllDOM(); DS[ns].activeTab = ti; renderAll(); }
@@ -1866,7 +1990,7 @@ function renderSubTabs(ns) {
     const lock = document.createElement('span'); lock.className = 'tab-lock-icon';
     lock.innerHTML = tab.locked ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 9.33-2.5"/></svg>`;
     lock.title = tab.locked ? 'Odemknout' : 'Zamknout'; lock.onclick = e => { e.stopPropagation(); toggleTabLock(ns, ti); };
-    const del = document.createElement('span'); del.className = 'tab-del-btn'; del.textContent = '×'; if (tab.locked) del.style.display = 'none';
+    const del = document.createElement('span'); del.className = 'tab-del-btn'; del.textContent = '×'; if (tab.locked || DS[ns].tabs.length <= 1) del.style.display = 'none';
     del.onclick = e => { e.stopPropagation(); deleteSubTab(ns, ti); };
     // Drag & drop pro přeuspořádání záložek
     el.setAttribute('draggable', 'true');
@@ -2931,75 +3055,123 @@ function fgUpdateInfo() {
     else info.textContent = (bytes/(1024*1024)).toFixed(2)+' MB';
   }
 }
+function pdfTextPart(text) { return text; }
+function buildPdfParts(paddingLength) {
+  const parts = [];
+  const offsets = [0];
+  let total = 0;
+  const pushText = text => { parts.push(pdfTextPart(text)); total += text.length; };
+  const pushObject = (number, body) => { offsets[number] = total; pushText(number+' 0 obj\n'+body+'\nendobj\n'); };
+  pushText('%PDF-1.4\n% TestingToolbox\n');
+  pushObject(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  pushObject(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+  pushObject(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>');
+  const content = 'BT /F1 18 Tf 72 720 Td (TestingToolbox test file) Tj ET';
+  pushObject(4, '<< /Length '+content.length+' >>\nstream\n'+content+'\nendstream');
+  pushObject(5, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  offsets[6] = total;
+  pushText('6 0 obj\n<< /Length '+paddingLength+' >>\nstream\n');
+  if (paddingLength) { parts.push({paddingLength}); total += paddingLength; }
+  pushText('\nendstream\nendobj\n');
+  const xrefStart = total;
+  let xref = 'xref\n0 7\n0000000000 65535 f \n';
+  for (let i = 1; i <= 6; i++) xref += String(offsets[i]).padStart(10, '0')+' 00000 n \n';
+  xref += 'trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n'+xrefStart+'\n%%EOF\n';
+  pushText(xref);
+  return {parts, total};
+}
+
+function makeValidPdfBlob(targetBytes) {
+  let paddingLength = 0;
+  let result = buildPdfParts(0);
+  if (targetBytes > result.total) paddingLength = targetBytes - result.total;
+  for (let i = 0; i < 6; i++) {
+    result = buildPdfParts(paddingLength);
+    const difference = targetBytes - result.total;
+    if (!difference) break;
+    paddingLength = Math.max(0, paddingLength + difference);
+  }
+  const encoder = new TextEncoder();
+  const blobParts = [];
+  result.parts.forEach(part => {
+    if (typeof part === 'string') {
+      blobParts.push(encoder.encode(part));
+      return;
+    }
+    let remaining = part.paddingLength;
+    while (remaining > 0) {
+      const chunk = new Uint8Array(Math.min(1024 * 1024, remaining));
+      chunk.fill(0x78);
+      blobParts.push(chunk);
+      remaining -= chunk.length;
+    }
+  });
+  return new Blob(blobParts, {type:'application/pdf'});
+}
+
 function fgGenerate() {
-  const size = parseInt(document.getElementById('fg-size')?.value)||1;
-  const nameInp = document.getElementById('fg-name')?.value||'testfile';
+  const size = parseInt(document.getElementById('fg-size')?.value, 10);
+  const nameInp = document.getElementById('fg-name')?.value || 'testfile';
   const status = document.getElementById('fg-status');
   let bytes;
-  if (fgUnit==='kb') bytes = size*1024;
-  else if (fgUnit==='mb') bytes = size*1024*1024;
+  if (fgUnit==='kb') bytes = size * 1024;
+  else if (fgUnit==='mb') bytes = size * 1024 * 1024;
   else bytes = size;
+  if (!Number.isSafeInteger(bytes) || bytes < 1) { if (status) status.textContent = 'Neplatná velikost.'; return; }
   if (bytes > 200*1024*1024) { if(status) status.textContent='Max. 200 MB.'; return; }
 
-  let ext = fgType==='custom' ? (document.getElementById('fg-ext')?.value||'.bin') : '.'+fgType;
+  let ext = fgType==='custom' ? (document.getElementById('fg-ext')?.value || '.bin') : '.'+fgType;
   if (!ext.startsWith('.')) ext = '.'+ext;
-  const fname = nameInp.replace(/\.[^.]+$/,'') + ext;
-
-  const btn = document.querySelector('#gen-soubory .section-btn.accent');
-  if (btn) { btn.disabled = true; btn.textContent = LANG==='en' ? '⏳ Generating…' : '⏳ Generuji…'; }
-  if (status) status.textContent = LANG==='en' ? 'Preparing…' : 'Připravuji…';
-
-  // Chunked generování aby UI nezamrzlo
-  const CHUNK = 1024 * 1024; // 1 MB za krok
-  const chunks = [];
-  let generated = 0;
-
-  function finalize() {
-    const blob = new Blob(chunks, {type: mime});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href=url; a.download=fname;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url), 2000);
-    const actual = bytes<1024?bytes+' B':bytes<1048576?(bytes/1024).toFixed(1)+' KB':(bytes/1048576).toFixed(2)+' MB';
-    if(status) status.textContent = '✓ '+(LANG==='en'?'Downloaded: ':'Staženo: ')+fname+' ('+actual+')';
-    if (btn) { btn.disabled = false; btn.textContent = '⬇ '+(LANG==='en'?'Generate and download':'Generovat a stáhnout soubor'); }
-  }
-
-  function nextChunk() {
-    if (generated >= bytes) { finalize(); return; }
-    const chunkSize = Math.min(CHUNK, bytes - generated);
-    const pct = Math.round(generated / bytes * 100);
-    if(status) status.textContent = (LANG==='en'?'Generating… ':'Generuji… ') + pct + '%';
-
-    try {
-      if (fgType === 'bin') {
-        const arr = new Uint8Array(chunkSize);
-        crypto.getRandomValues(arr);
-        chunks.push(arr);
-      } else {
-        // TXT, PDF, CSV, vlastní — opakuj "Test Text\n"
-        const enc = new TextEncoder();
-        const line = enc.encode('Test Text\n');
-        const arr = new Uint8Array(chunkSize);
-        let pos = 0;
-        while (pos < chunkSize) {
-          const take = Math.min(line.length, chunkSize - pos);
-          arr.set(line.subarray(0, take), pos);
-          pos += take;
-        }
-        chunks.push(arr);
-      }
-      generated += chunkSize;
-      setTimeout(nextChunk, 0); // uvolnit UI vlákno
-    } catch(err) {
-      if(status) status.textContent = (LANG==='en'?'Error: ':'Chyba: ')+err.message;
-      if (btn) { btn.disabled = false; btn.textContent = '⬇ '+(LANG==='en'?'Generate and download':'Generovat a stáhnout soubor'); }
-    }
-  }
-
-  const mimeMap = {pdf:'application/pdf', txt:'text/plain', csv:'text/csv'};
+  ext = ext.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 20) || '.bin';
+  const safeName = (nameInp.replace(/\.[^.]+$/,'').replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_').slice(0, 120) || 'testfile');
+  const fname = safeName + ext;
+  const mimeMap = {pdf:'application/pdf', txt:'text/plain;charset=utf-8', csv:'text/csv;charset=utf-8'};
   const mime = mimeMap[fgType] || 'application/octet-stream';
-  setTimeout(nextChunk, 10);
+  const btn = document.querySelector('#gen-soubory .section-btn.accent');
+  if (btn) { btn.disabled = true; btn.textContent = LANG === 'en' ? '⏳ Generating…' : '⏳ Generuji…'; }
+  if (status) status.textContent = LANG === 'en' ? 'Preparing…' : 'Připravuji…';
+
+  const finish = blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    const actual = bytes < 1024 ? bytes+' B' : bytes < 1048576 ? (bytes/1024).toFixed(1)+' KB' : (bytes/1048576).toFixed(2)+' MB';
+    if (status) status.textContent = '✓ '+(LANG === 'en' ? 'Downloaded: ' : 'Staženo: ')+fname+' ('+actual+')';
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ '+(LANG === 'en' ? 'Generate and download' : 'Generovat a stáhnout soubor'); }
+  };
+
+  try {
+    if (fgType === 'pdf') {
+      finish(makeValidPdfBlob(bytes));
+      return;
+    }
+    const CHUNK = 1024 * 1024;
+    const chunks = [];
+    const encoder = new TextEncoder();
+    const textPattern = fgType === 'csv' ? 'id,content\n1,TestingToolbox test data\n2,Sample row\n' : 'TestingToolbox test data\n';
+    const line = encoder.encode(textPattern);
+    let generated = 0;
+    const nextChunk = () => {
+      if (generated >= bytes) { finish(new Blob(chunks, {type: mime})); return; }
+      const chunkSize = Math.min(CHUNK, bytes - generated);
+      const pct = Math.round(generated / bytes * 100);
+      if (status) status.textContent = (LANG === 'en' ? 'Generating… ' : 'Generuji… ') + pct + '%';
+      const arr = new Uint8Array(chunkSize);
+      if (fgType === 'bin') {
+        crypto.getRandomValues(arr);
+      } else {
+        for (let pos = 0; pos < chunkSize; pos += line.length) arr.set(line.subarray(0, Math.min(line.length, chunkSize - pos)), pos);
+      }
+      chunks.push(arr);
+      generated += chunkSize;
+      setTimeout(nextChunk, 0);
+    };
+    setTimeout(nextChunk, 10);
+  } catch (err) {
+    if (status) status.textContent = (LANG === 'en' ? 'Error: ' : 'Chyba: ') + err.message;
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ '+(LANG === 'en' ? 'Generate and download' : 'Generovat a stáhnout soubor'); }
+  }
 }
 
 /* ══ SEZNAM (checklist) ══ */
@@ -3283,7 +3455,7 @@ function renderSubTabsSl() {
     lock.onclick = e => { e.stopPropagation(); syncSlDOM(); tab.locked = !tab.locked; markDirty(); renderSubTabsSl(); renderSlContents(); };
     const del = document.createElement('span'); del.className = 'tab-del-btn'; del.textContent = '×';
     if (tab.locked || DS.sl.tabs.length <= 1) del.style.display = 'none';
-    del.onclick = e => { e.stopPropagation(); if (!confirm('Smazat "' + tab.name + '"?')) return; syncSlDOM(); DS.sl.tabs.splice(ti, 1); DS.sl.activeTab = Math.min(DS.sl.activeTab, DS.sl.tabs.length - 1); markDirty(); renderSubTabsSl(); renderSlContents(); updateArrowsSl(); };
+    del.onclick = e => { e.stopPropagation(); if (DS.sl.tabs.length <= 1) { alert('Poslední seznam nelze smazat.'); return; } if (!confirm('Smazat "' + tab.name + '"?')) return; syncSlDOM(); DS.sl.tabs.splice(ti, 1); DS.sl.activeTab = Math.min(DS.sl.activeTab, DS.sl.tabs.length - 1); markDirty(); renderSubTabsSl(); renderSlContents(); updateArrowsSl(); };
     // Drag & drop pro přeuspořádání záložek Seznamu
     el.setAttribute('draggable', 'true');
     el.addEventListener('dragstart', (e) => {

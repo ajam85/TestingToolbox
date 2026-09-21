@@ -17,8 +17,8 @@ echo -- Obsah teto slozky --
 dir /b
 echo.
 
-echo -- Zkousim npm install --
-npm install 2>&1
+echo -- Zkousim npm ci --
+npm ci 2>&1
 echo.
 echo Navratovy kod: %ERRORLEVEL%
 echo.

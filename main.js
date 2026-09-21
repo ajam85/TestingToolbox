@@ -1,8 +1,35 @@
-// TestingToolbox v25 — Electron main process
+// TestingToolbox v27 — Electron main process
 const { app, BrowserWindow, ipcMain, clipboard } = require('electron');
 const path = require('path');
+const { pathToFileURL } = require('url');
+
+const rendererPath = path.join(__dirname, 'src', 'index.html');
+const rendererUrl = pathToFileURL(rendererPath).href;
+const MAX_CLIPBOARD_TEXT_LENGTH = 1024 * 1024;
+let mainWindow = null;
+
+function isTrustedRenderer(event, win) {
+  return Boolean(
+    win && !win.isDestroyed() &&
+    event.sender === win.webContents &&
+    event.senderFrame && event.senderFrame.url === rendererUrl
+  );
+}
+
+function isTrustedRequestingUrl(url) {
+  return typeof url === 'string' && url === rendererUrl;
+}
 
 ipcMain.handle('clipboard-write', (event, text) => {
+  if (!isTrustedRenderer(event, mainWindow)) {
+    throw new Error('Unauthorized IPC sender');
+  }
+  if (typeof text !== 'string') {
+    throw new TypeError('Clipboard text must be a string');
+  }
+  if (text.length > MAX_CLIPBOARD_TEXT_LENGTH) {
+    throw new RangeError('Clipboard text is too long');
+  }
   clipboard.writeText(text);
   return true;
 });
@@ -14,14 +41,42 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false, contextIsolation: true, geolocation: false
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      webviewTag: false,
+      geolocation: false
     }
   });
-  win.webContents.session.setPermissionRequestHandler((wc, permission, cb) => {
-    cb(permission === 'notifications');
+
+  mainWindow = win;
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url !== rendererUrl) event.preventDefault();
   });
-  win.loadFile(path.join(__dirname, 'src', 'index.html'));
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-attach-webview', event => event.preventDefault());
+
+  win.webContents.session.setPermissionRequestHandler((wc, permission, cb, details) => {
+    cb(
+      wc === win.webContents &&
+      permission === 'notifications' &&
+      isTrustedRequestingUrl(details && details.requestingUrl)
+    );
+  });
+  win.webContents.session.setPermissionCheckHandler((wc, permission, requestingOrigin) => {
+    return wc === win.webContents &&
+      permission === 'notifications' &&
+      isTrustedRequestingUrl(requestingOrigin === 'file://' ? rendererUrl : requestingOrigin);
+  });
+
+  win.loadFile(rendererPath);
   win.setMenuBarVisibility(false);
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = null;
+  });
+  return win;
 }
 
 app.whenReady().then(() => {
