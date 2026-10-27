@@ -1,4 +1,4 @@
-// TestingToolbox v27 — Electron main process
+// TestingToolbox v28 — Electron main process
 const { app, BrowserWindow, ipcMain, clipboard } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
@@ -31,6 +31,20 @@ ipcMain.handle('clipboard-write', (event, text) => {
     throw new RangeError('Clipboard text is too long');
   }
   clipboard.writeText(text);
+  return true;
+});
+
+ipcMain.handle('clipboard-write-rich', (event, text, html) => {
+  if (!isTrustedRenderer(event, mainWindow)) {
+    throw new Error('Unauthorized IPC sender');
+  }
+  if (typeof text !== 'string' || typeof html !== 'string') {
+    throw new TypeError('Clipboard text and html must be strings');
+  }
+  if (text.length > MAX_CLIPBOARD_TEXT_LENGTH || html.length > MAX_CLIPBOARD_TEXT_LENGTH * 2) {
+    throw new RangeError('Clipboard content is too long');
+  }
+  clipboard.write({ text, html });
   return true;
 });
 

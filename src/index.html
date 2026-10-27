@@ -299,6 +299,13 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 .select-all-btn:hover { background:var(--bg3); color:var(--text); }
 .field-visibility-btn { padding:5px 12px; font-size:12px; border-radius:7px; border:1px solid var(--border3); background:var(--bg2); color:var(--text3); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; }
 .field-visibility-btn:hover { background:var(--bg3); color:var(--text); }
+.sl-act-btn { padding:5px 12px; font-size:12px; border-radius:7px; border:1px solid var(--border3); background:var(--bg2); color:var(--text3); cursor:pointer; transition:all .15s; }
+.sl-act-btn:hover { background:var(--bg3); color:var(--text); }
+.sl-item.sl-spacer { padding:4px 10px; border-style:dashed; background:transparent; }
+.sl-item.sl-spacer.checked { background:var(--accent-bg); border-style:dashed; }
+.sl-spacer-label { flex:1; font-size:12px; font-style:italic; color:var(--text5); user-select:none; }
+.cnt-ta { width:100%; min-height:240px; resize:vertical; background:var(--bg3); border:1px solid var(--border2); border-radius:8px; padding:.8rem 1rem; font-size:13.5px; line-height:1.6; color:var(--text); font-family:'Segoe UI',sans-serif; outline:none; box-sizing:border-box; }
+.cnt-ta:focus { border-color:var(--accent); }
 .cb-row { display:flex; align-items:stretch; gap:0; margin-bottom:8px; background:var(--row-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; transition:border-color .15s; }
 .cb-row:hover { border-color:var(--border3); }
 .cb-line-inp { flex:1; min-width:0; padding:8px 10px; font-size:13px; border:none; background:transparent; color:var(--text); }
@@ -907,6 +914,11 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 <!-- ══ GENERÁTOR TEXTU ══ -->
 <div class="tab-content" id="tab-gt">
   <div class="gt-wrap">
+    <div class="nt-mode-bar">
+      <div class="nt-mode-tab active" id="gtm-tab-gen" onclick="gtSwitchMode('gen')">Generátor</div>
+      <div class="nt-mode-tab" id="gtm-tab-count" onclick="gtSwitchMode('count')">Počítadlo</div>
+    </div>
+    <div class="nt-mode-section active" id="gtm-sec-gen">
     <div class="gt-card">
       <div class="gt-card-title">Vygenerovaný text</div>
       <div class="gt-out-bar">
@@ -975,7 +987,25 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
         </div>
       </div>
     </div>
-    
+    </div>
+    <div class="nt-mode-section" id="gtm-sec-count">
+      <div class="gt-card">
+        <div class="gt-card-title">Vlož nebo napiš text</div>
+        <textarea id="cnt-input" class="cnt-ta" placeholder="Sem vlož text — statistiky se zobrazí okamžitě…" spellcheck="false" oninput="cntUpdate()"></textarea>
+        <div class="gt-out-bar" style="margin-top:.75rem">
+          <button class="section-btn" onclick="cntClear()">× Vymazat</button>
+        </div>
+        <div class="gt-stats-row">
+          <div class="gt-stat-chip"><span class="sv" id="cnt-chars">0</span><span class="sl">Znaky</span></div>
+          <div class="gt-stat-chip"><span class="sv" id="cnt-nospace">0</span><span class="sl">Bez mezer</span></div>
+          <div class="gt-stat-chip"><span class="sv" id="cnt-words">0</span><span class="sl">Slova</span></div>
+          <div class="gt-stat-chip"><span class="sv" id="cnt-bytes">0</span><span class="sl">Bajty (UTF-8)</span></div>
+          <div class="gt-stat-chip"><span class="sv" id="cnt-lines">0</span><span class="sl">Řádky</span></div>
+          <div class="gt-stat-chip"><span class="sv" id="cnt-paras">0</span><span class="sl">Odstavce</span></div>
+          <div class="gt-stat-chip"><span class="sv" id="cnt-sent">0</span><span class="sl">Věty (odhad)</span></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1170,8 +1200,15 @@ textarea.note-textarea:disabled{cursor:default;color:var(--text3);}
 /* ══ VERZE APLIKACE ══
    Při každé změně: 1) zvýšit APP_VERSION, 2) přidat záznam na začátek CHANGELOG,
    3) pojmenovat výstupní soubor TestingToolbox_vX.html se stejným číslem. */
-const APP_VERSION = 'v27';
+const APP_VERSION = 'v28';
 const CHANGELOG = [
+  { v: 'v28', items: [
+    '+ Poznámky → Seznam: prázdný řádek (tlačítko "＋ Prázdný řádek", nebo Shift+Enter v položce) — při kopírování vznikne mezera',
+    '+ Seznam: kopírování zachová tučné písmo a podtržení (po vložení do Wordu, Outlooku apod.)',
+    '✓ Seznam: oprava přeskočení kurzoru po Enter a přepsání popisku tlačítka "Odznačit vše"',
+    '✓ Osoba/Firma: ikona očička se u zamčeného záznamu nezobrazuje, je vidět jen v odemčeném stavu',
+    '+ Generátor textu → Počítadlo: vložený text se okamžitě spočítá (znaky, znaky bez mezer, slova, bajty, řádky, odstavce, věty)'
+  ]},
   { v: 'v27', items: [
     '✓ Testovací data (Obecné/Osoba/Firma) a Poznámky — nelze už smazat úplně poslední záložku (dřív by tím sekce přišla o všechny záznamy)'
   ]},
@@ -1775,7 +1812,8 @@ function normalizeTabs(tabs, ns) {
     return {...base, items: boundedArray(tab.items, IMPORT_LIMITS.maxItems, 'Položky seznamu').map((item, itemIndex) => {
       if (!isPlainObject(item)) throw new Error('Položka '+(itemIndex + 1)+' není objekt.');
       return {
-        text: boundedString(item.text, IMPORT_LIMITS.maxValueLength, '', 'Text položky'),
+        text: item.spacer === true ? '' : boundedString(item.text, IMPORT_LIMITS.maxValueLength, '', 'Text položky'),
+        spacer: item.spacer === true,
         checked: item.checked === true,
         bold: item.bold === true,
         underline: item.underline === true,
@@ -2108,7 +2146,7 @@ function renderFixedContents(ns) {
       const acts=document.createElement('div'); acts.className='row-actions';
       const eyeBtn = document.createElement('button'); eyeBtn.className='copy-btn'; eyeBtn.title = 'Skrýt pole "'+row.label+'" u tohoto záznamu (irelevantní údaj)'; eyeBtn.innerHTML = EYE_SVG;
       eyeBtn.onclick = () => toggleFieldVisibility(ns, ti, row.label);
-      acts.appendChild(eyeBtn);
+      if (!tab.locked) acts.appendChild(eyeBtn);
       acts.appendChild(cpBtn);
       rowEl.appendChild(chkWrap); rowEl.appendChild(fields); rowEl.appendChild(acts); rw.appendChild(rowEl);
     });
@@ -3199,6 +3237,43 @@ function syncSlDOM() {
   });
 }
 
+// Drag & drop jednoho řádku Seznamu
+function slWireRowDrag(row, ii, tab) {
+  row.setAttribute('draggable', 'true');
+  row.dataset.idx = ii;
+  row.addEventListener('dragstart', (e) => {
+    if (tab.locked) { e.preventDefault(); return; }
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', ii);
+    setTimeout(() => row.classList.add('dragging'), 0);
+  });
+  row.addEventListener('dragend', () => row.classList.remove('dragging'));
+  row.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect='move'; row.classList.add('drag-over'); });
+  row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+  row.addEventListener('drop', (e) => {
+    e.preventDefault(); row.classList.remove('drag-over');
+    const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+    const toIdx = ii;
+    if (isNaN(fromIdx) || fromIdx === toIdx) return;
+    syncSlDOM();
+    const [moved] = tab.items.splice(fromIdx, 1);
+    tab.items.splice(toIdx, 0, moved);
+    markDirty(); renderSlContents();
+  });
+}
+// Po překreslení Seznamu nastaví kurzor do textového pole položky (přeskočí prázdné řádky)
+function slFocusItem(idx, searchBack) {
+  setTimeout(() => {
+    const secs = document.querySelectorAll('#sl-contents > div');
+    const sec = secs[DS.sl.activeTab]; if (!sec) return;
+    const rows = sec.querySelectorAll('.sl-wrap .sl-item');
+    const step = searchBack ? -1 : 1;
+    for (let i = Math.min(idx, rows.length - 1); i >= 0 && i < rows.length; i += step) {
+      const inp = rows[i].querySelector('.sl-text');
+      if (inp) { inp.focus(); return; }
+    }
+  }, 20);
+}
 function renderSlContents() {
   const wrap = document.getElementById('sl-contents');
   if (!wrap) return;
@@ -3227,20 +3302,24 @@ function renderSlContents() {
     const cpSel = document.createElement('button'); cpSel.className = 'copy-selected-btn';
     cpSel.textContent = '⎘ ' + (t('copy_selected') || 'Kopírovat označené').replace('⎘ ','');
     cpSel.onclick = () => {
-      const lines = [];
-      itemsWrap.querySelectorAll('.sl-item').forEach(item => {
-        if (item.querySelector('.sl-check').checked) {
-          const numVal = parseInt(item.querySelector('.sl-num')?.value, 10) || 0;
-          const textVal = item.querySelector('.sl-text').value;
-          lines.push(numVal !== 0 ? (numVal + textVal) : textVal);
-        }
+      const lines = []; let hasFmt = false;
+      tab.items.forEach((it, i) => {
+        const rowEl = itemsWrap.children[i]; if (!rowEl) return;
+        const chkEl = rowEl.querySelector('.sl-check'); if (!chkEl || !chkEl.checked) return;
+        if (it.spacer) { lines.push({text:'', bold:false, underline:false}); return; }
+        const numVal = parseInt(rowEl.querySelector('.sl-num')?.value, 10) || 0;
+        const textVal = rowEl.querySelector('.sl-text').value;
+        const bold = it.bold === true, underline = it.underline === true;
+        if (textVal !== '' && (bold || underline)) hasFmt = true;
+        lines.push({text: numVal !== 0 ? (numVal + textVal) : textVal, bold, underline});
       });
       if (!lines.length) { alert(t('none_selected') || 'Nic není označeno.'); return; }
-      const text = lines.join('\n');
-      const ok = () => { cpSel.classList.add('copied'); cpSel.textContent = '✓'; setTimeout(() => { cpSel.classList.remove('copied'); cpSel.textContent = '⎘ Kopírovat'; }, 1500); };
-      smartCopy(text, ok);
+      const plain = lines.map(l => l.text).join('\n');
+      const origLabel = cpSel.textContent;
+      const ok = () => { cpSel.classList.add('copied'); cpSel.textContent = '✓ Zkopírováno'; setTimeout(() => { cpSel.classList.remove('copied'); cpSel.textContent = origLabel; }, 1500); };
+      if (hasFmt) smartCopyRich(plain, slBuildHtml(lines), ok); else smartCopy(plain, ok);
     };
-    const clearChecked = document.createElement('button'); clearChecked.className = 'select-all-btn';
+    const clearChecked = document.createElement('button'); clearChecked.className = 'sl-act-btn';
     clearChecked.textContent = '× Odznačit vše';
     clearChecked.onclick = () => { itemsWrap.querySelectorAll('.sl-check:not(:disabled)').forEach(b => { b.checked = false; b.closest('.sl-item').classList.remove('checked'); }); };
     acts.appendChild(selAll); acts.appendChild(cpSel); acts.appendChild(clearChecked);
@@ -3248,6 +3327,23 @@ function renderSlContents() {
 
     tab.items.forEach((item, ii) => {
       const row = document.createElement('div'); row.className = 'sl-item' + (item.checked ? ' checked' : '');
+
+      // Prázdný řádek (mezera) — při kopírování vznikne prázdný řádek
+      if (item.spacer) {
+        row.classList.add('sl-spacer');
+        const sHandle = document.createElement('div'); sHandle.className = 'sl-drag-handle'; sHandle.title = 'Přesunout';
+        sHandle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>`;
+        const sChk = document.createElement('input'); sChk.type = 'checkbox'; sChk.className = 'sl-check'; sChk.checked = item.checked || false;
+        sChk.onchange = () => { item.checked = sChk.checked; row.classList.toggle('checked', sChk.checked); markDirty(); };
+        const sLbl = document.createElement('span'); sLbl.className = 'sl-spacer-label'; sLbl.textContent = '— prázdný řádek —';
+        const sDel = document.createElement('button'); sDel.className = 'sl-del'; sDel.textContent = '×'; sDel.title = 'Smazat prázdný řádek';
+        sDel.style.display = tab.locked ? 'none' : '';
+        sDel.onclick = () => { tab.items.splice(ii, 1); markDirty(); renderSlContents(); };
+        row.appendChild(sHandle); row.appendChild(sChk); row.appendChild(sLbl); row.appendChild(sDel);
+        slWireRowDrag(row, ii, tab);
+        itemsWrap.appendChild(row);
+        return;
+      }
 
       const chk = document.createElement('input'); chk.type = 'checkbox'; chk.className = 'sl-check';
       chk.checked = item.checked || false;
@@ -3271,21 +3367,19 @@ function renderSlContents() {
       txt.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !tab.locked) {
           e.preventDefault();
-          tab.items.splice(ii + 1, 0, { text: '', checked: false, bold: item.bold, underline: item.underline });
-          markDirty(); renderSlContents();
-          setTimeout(() => {
-            const inputs = itemsWrap.querySelectorAll('.sl-text');
-            if (inputs[ii + 1]) inputs[ii + 1].focus();
-          }, 20);
+          if (e.shiftKey) {
+            // Shift+Enter vloží prázdný řádek (mezeru) pod aktuální položku
+            tab.items.splice(ii + 1, 0, { text: '', checked: false, spacer: true });
+            markDirty(); renderSlContents(); slFocusItem(ii);
+          } else {
+            tab.items.splice(ii + 1, 0, { text: '', checked: false, bold: item.bold, underline: item.underline });
+            markDirty(); renderSlContents(); slFocusItem(ii + 1);
+          }
         }
         if (e.key === 'Backspace' && txt.value === '' && tab.items.length > 1 && !tab.locked) {
           e.preventDefault();
           tab.items.splice(ii, 1);
-          markDirty(); renderSlContents();
-          setTimeout(() => {
-            const inputs = itemsWrap.querySelectorAll('.sl-text');
-            if (inputs[Math.max(0, ii - 1)]) inputs[Math.max(0, ii - 1)].focus();
-          }, 20);
+          markDirty(); renderSlContents(); slFocusItem(Math.max(0, ii - 1), true);
         }
       });
 
@@ -3344,28 +3438,7 @@ function renderSlContents() {
       dragHandle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>`; dragHandle.title = 'Přesunout';
       dragHandle.setAttribute('draggable', 'false'); // handle initiates drag on row
 
-      row.setAttribute('draggable', 'true');
-      row.dataset.idx = ii;
-
-      row.addEventListener('dragstart', (e) => {
-        if (tab.locked) { e.preventDefault(); return; }
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', ii);
-        setTimeout(() => row.classList.add('dragging'), 0);
-      });
-      row.addEventListener('dragend', () => row.classList.remove('dragging'));
-      row.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect='move'; row.classList.add('drag-over'); });
-      row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-      row.addEventListener('drop', (e) => {
-        e.preventDefault(); row.classList.remove('drag-over');
-        const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
-        const toIdx = ii;
-        if (fromIdx === toIdx) return;
-        syncSlDOM();
-        const [moved] = tab.items.splice(fromIdx, 1);
-        tab.items.splice(toIdx, 0, moved);
-        markDirty(); renderSlContents();
-      });
+      slWireRowDrag(row, ii, tab);
 
       row.appendChild(dragHandle); row.appendChild(chk); row.appendChild(num); row.appendChild(txt); row.appendChild(fmt); row.appendChild(lockBtn); row.appendChild(del);
       itemsWrap.appendChild(row);
@@ -3391,7 +3464,10 @@ function renderSlContents() {
           }, 20);
         }
       });
-      addRow.appendChild(addInp);
+      const spBtn = document.createElement('button'); spBtn.className = 'sl-act-btn'; spBtn.textContent = '＋ Prázdný řádek';
+      spBtn.title = 'Vloží prázdný řádek — při kopírování vznikne mezera (zkratka: Shift+Enter v položce vloží mezeru pod ni)';
+      spBtn.onclick = () => { tab.items.push({ text: '', checked: false, spacer: true }); markDirty(); renderSlContents(); };
+      addRow.appendChild(addInp); addRow.appendChild(spBtn);
       sec.appendChild(addRow);
     }
 
@@ -3529,6 +3605,84 @@ function smartCopy(text, onSuccess) {
   // 3. execCommand (poslední záchrana)
   fallbackCopy(text);
   ok();
+}
+
+// Kopírování s formátováním (HTML + prostý text). Hodí se pro tučné písmo a podtržení.
+function richExecCopy(html) {
+  const holder = document.createElement('div');
+  holder.contentEditable = 'true';
+  holder.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none';
+  holder.innerHTML = html;
+  document.body.appendChild(holder);
+  const range = document.createRange(); range.selectNodeContents(holder);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+  let done = false;
+  try { done = document.execCommand('copy'); } catch(e) { console.warn('rich copy failed', e); }
+  sel.removeAllRanges(); document.body.removeChild(holder);
+  return done;
+}
+function smartCopyRich(text, html, onSuccess) {
+  const ok = onSuccess || function(){};
+  const plainFallback = () => smartCopy(text, ok);
+  // 1. Electron IPC (text + html)
+  if (window.electronAPI && typeof window.electronAPI.copyRich === 'function') {
+    try {
+      const r = window.electronAPI.copyRich(text, html);
+      if (r && typeof r.then === 'function') r.then(ok).catch(plainFallback); else ok();
+    } catch (e) { plainFallback(); }
+    return;
+  }
+  // 2. Async Clipboard API s více formáty
+  if (navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
+    try {
+      const item = new ClipboardItem({
+        'text/html': new Blob([html], {type:'text/html'}),
+        'text/plain': new Blob([text], {type:'text/plain'})
+      });
+      navigator.clipboard.write([item]).then(ok).catch(() => { if (richExecCopy(html)) ok(); else plainFallback(); });
+      return;
+    } catch (e) { /* pokračuj dál */ }
+  }
+  // 3. execCommand nad editovatelným prvkem (kopíruje i formátování)
+  if (richExecCopy(html)) ok(); else plainFallback();
+}
+// Sestaví HTML ze seznamu řádků {text, bold, underline}; prázdný řádek zůstane prázdným řádkem
+function slBuildHtml(lines) {
+  const body = lines.map(l => {
+    let inner = esc(l.text).replace(/ {2,}/g, m => ' ' + '&nbsp;'.repeat(m.length - 1));
+    if (inner !== '' && l.underline) inner = '<u>' + inner + '</u>';
+    if (inner !== '' && l.bold) inner = '<b>' + inner + '</b>';
+    return inner;
+  }).join('<br>');
+  return '<div>' + body + '</div>';
+}
+
+/* ══ POČÍTADLO ZNAKŮ ══ */
+function gtSwitchMode(mode) {
+  ['gen','count'].forEach(m => {
+    document.getElementById('gtm-tab-'+m)?.classList.toggle('active', m === mode);
+    document.getElementById('gtm-sec-'+m)?.classList.toggle('active', m === mode);
+  });
+  if (mode === 'count') document.getElementById('cnt-input')?.focus();
+}
+function cntUpdate() {
+  const ta = document.getElementById('cnt-input'); if (!ta) return;
+  const text = ta.value;
+  const fmt = n => n.toLocaleString('cs-CZ');
+  const vals = {
+    chars: Array.from(text).length,
+    nospace: Array.from(text.replace(/\s/g, '')).length,
+    words: (text.match(/\S+/g) || []).length,
+    bytes: new TextEncoder().encode(text).length,
+    lines: text === '' ? 0 : text.split(/\r\n|\r|\n/).length,
+    paras: text.split(/\n\s*\n/).filter(p => p.trim()).length,
+    sent: text.split(/(?<=[.!?…])\s+|\n+/).filter(x => x.trim()).length
+  };
+  Object.keys(vals).forEach(k => { const el = document.getElementById('cnt-'+k); if (el) el.textContent = fmt(vals[k]); });
+}
+function cntClear() {
+  const ta = document.getElementById('cnt-input'); if (!ta) return;
+  ta.value = ''; cntUpdate(); ta.focus();
 }
 
 /* ══ KONTEXTOVÝ EXPORT/IMPORT ══ */
