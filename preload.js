@@ -1,4 +1,4 @@
-// TestingToolbox v28 — Electron preload
+// TestingToolbox v29 — Electron preload
 const { contextBridge, ipcRenderer } = require('electron');
 
 const MAX_CLIPBOARD_TEXT_LENGTH = 1024 * 1024;

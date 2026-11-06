@@ -1,4 +1,4 @@
-// TestingToolbox v28 — Electron main process
+// TestingToolbox v29 — Electron main process
 const { app, BrowserWindow, ipcMain, clipboard } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
