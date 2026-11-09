@@ -8,7 +8,8 @@
   "scripts": {
     "start": "electron .",
     "build:win": "electron-builder --win portable",
-    "build:win:installer": "electron-builder --win nsis"
+    "build:win:installer": "electron-builder --win nsis",
+    "build:win:all": "electron-builder --win portable nsis"
   },
   "devDependencies": {
     "electron": "^31.0.0",
@@ -18,13 +19,37 @@
     "appId": "com.testingtoolbox.app",
     "productName": "TestingToolbox",
     "copyright": "Copyright © 2025",
-    "directories": { "output": "dist", "buildResources": "assets" },
-    "files": ["main.js", "preload.js", "src/**/*", "assets/**/*"],
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*"
+    ],
     "win": {
       "icon": "assets/icon.ico",
       "signAndEditExecutable": false,
-      "target": [{ "target": "portable", "arch": ["x64"] }]
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
-    "portable": { "artifactName": "TestingToolbox-Portable-${version}.exe" }
+    "portable": {
+      "artifactName": "TestingToolbox-Portable-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "TestingToolbox-Setup-${version}.exe",
+      "shortcutName": "TestingToolbox"
+    }
   }
 }
